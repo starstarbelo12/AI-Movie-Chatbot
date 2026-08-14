@@ -77,13 +77,17 @@ stemmer = PorterStemmer()
 
 
 # ============================================================
-# SPELL CORRECTION
+# SPELL CORRECTION & ACCENT REMOVAL
 # ============================================================
 
 spell = SpellChecker()
 
 
 def remove_accents(text):
+    """
+    Normalizes accented characters to standard ASCII letters.
+    E.g., 'Pokémon' -> 'Pokemon', 'Amélie' -> 'Amelie'.
+    """
     return "".join(
         c
         for c in unicodedata.normalize("NFD", str(text))
@@ -117,6 +121,25 @@ common_typo_overrides = {
     "whts": "what's",
 }
 
+# Pure intent keywords stripped when extracting title candidates
+intent_only_keywords = {
+    "what", "is", "rating", "genre", "genres", "budget", "revenue",
+    "summary", "summarize", "plot", "story", "storyline",
+    "collection", "runtime", "duration", "rt", "time", "length",
+    "language", "languages", "spoken", "released", "release",
+    "date", "when", "was", "tell", "me", "details", "detail",
+    "information", "info", "find", "search", "look", "up",
+    "check", "give", "show", "please", "cost", "made", "earned",
+    "score", "how", "much", "many", "long", "which"
+}
+
+# Full requirement word list used for exact sentence matching validation
+requirement_words = intent_only_keywords.union({
+    "the", "of", "for", "on", "about", "a", "an", "movie", "film",
+    "call", "called", "named", "know", "want", "full", "i", "to",
+    "total", "amount", "does", "have"
+})
+
 
 def segment_word(word):
     pieces = wordninja.split(word)
@@ -146,7 +169,8 @@ def correct_spelling(text):
             corrected_words.append(common_typo_overrides[word])
             continue
 
-        if word in spell:
+        # Protect valid dictionary words, title words, and intent words from segmentation
+        if word in spell or word in domain_words or word in requirement_words:
             corrected_words.append(word)
             continue
 
@@ -163,36 +187,25 @@ def correct_spelling(text):
 
 
 # ============================================================
-# MOVIE TITLE MATCHING
-# EXACT -> RAPIDFUZZ -> TF-IDF
+# ACCENT-STRIPPED MOVIE TITLE MATCHING INDEX
 # ============================================================
 
-all_titles_lower = (
-    df_cleaned["title"]
-    .astype(str)
-    .str.lower()
-    .drop_duplicates()
-    .tolist()
-)
+# Map normalized accent-free title string to original title string
+title_norm_to_original = {}
+
+for raw_title in df_cleaned["title"].astype(str).drop_duplicates():
+    norm = remove_accents(raw_title.lower())
+    if norm not in title_norm_to_original:
+        title_norm_to_original[norm] = raw_title
+
+# Store accent-normalized titles for indexing and matching
+all_titles_lower = list(title_norm_to_original.keys())
 
 title_word_lists = sorted(
-    [(title, title.split()) for title in all_titles_lower],
+    [(norm_title, norm_title.split()) for norm_title in all_titles_lower],
     key=lambda x: len(x[1]),
     reverse=True,
 )
-
-requirement_words = {
-    "what", "is", "the", "rating", "of", "genre", "budget", "revenue",
-    "summary", "summarize", "plot", "story", "storyline",
-    "collection", "does", "have", "how", "much", "long", "runtime",
-    "duration", "rt", "language", "languages", "spoken",
-    "released", "release", "date", "when", "was", "for", "on",
-    "about", "tell", "me", "a", "an", "movie", "film",
-    "call", "called", "named", "know", "want", "full", "i",
-    "to", "total", "amount", "details", "detail", "information",
-    "info", "find", "search", "look", "up", "check",
-    "give", "show", "please",
-}
 
 title_vectorizer = TfidfVectorizer(
     analyzer="char_wb",
@@ -209,90 +222,128 @@ def normalize_text(text):
     return text
 
 
-def find_exact_movie(user_message):
-    cleaned_input = normalize_text(user_message)
+def find_exact_movie(cleaned_input):
+    """
+    Finds exact title matches in user input against normalized title index.
+    Validates that any non-title words in the message belong to requirement_words.
+    """
     message_words = cleaned_input.split()
+    msg_len = len(message_words)
 
-    for title, title_words in title_word_lists:
-
+    for norm_title, title_words in title_word_lists:
         title_len = len(title_words)
 
-        if title_len == 0 or title_len > len(message_words):
+        if title_len == 0 or title_len > msg_len:
             continue
 
-        for i in range(len(message_words) - title_len + 1):
-
+        for i in range(msg_len - title_len + 1):
             possible_title = message_words[i:i + title_len]
 
-            if possible_title != title_words:
-                continue
+            if possible_title == title_words:
+                remaining_words = message_words[:i] + message_words[i + title_len:]
+                if all(word in requirement_words for word in remaining_words):
+                    return norm_title
 
-            remaining_words = (
-                message_words[:i] +
-                message_words[i + title_len:]
-            )
+    return None
 
-            if all(word in requirement_words for word in remaining_words):
-                return title
+
+def find_token_overlap_movie(cleaned_input):
+    """
+    Ranks movie titles using stemmed token F1-score balancing against normalized titles.
+    """
+    words_list = cleaned_input.split()
+    candidate_words = [w for w in words_list if w not in intent_only_keywords]
+
+    if not candidate_words:
+        return None
+
+    candidate_stemmed = [stemmer.stem(w) for w in candidate_words]
+    cand_len = len(candidate_stemmed)
+
+    best_title = None
+    max_overlap = 0
+    best_f1 = 0.0
+
+    for norm_title, title_words in title_word_lists:
+        title_stemmed = [stemmer.stem(w) for w in title_words]
+        title_len = len(title_words)
+
+        overlap_words = set(candidate_stemmed).intersection(set(title_stemmed))
+        overlap_count = len(overlap_words)
+
+        if overlap_count > 0:
+            f1 = (2.0 * overlap_count) / (cand_len + title_len)
+
+            if title_len == 1 and cand_len > 1:
+                f1 *= 0.1
+
+            if (overlap_count > max_overlap) or (
+                overlap_count == max_overlap and f1 > best_f1
+            ):
+                max_overlap = overlap_count
+                best_f1 = f1
+                best_title = norm_title
+
+    min_required = 1 if cand_len == 1 else 2
+    if max_overlap >= min_required and best_f1 >= 0.25:
+        return best_title
 
     return None
 
 
 def find_fuzzy_movie(
-    user_message,
+    cleaned_input,
     fuzzy_cutoff=65,
-    min_title_len=4,
 ):
-    cleaned_input = normalize_text(user_message)
-
-    candidate_words = [
-        word
-        for word in cleaned_input.split()
-        if word not in requirement_words
-    ]
-
-    candidate = " ".join(candidate_words).strip()
-
-    if len(candidate) < 3:
+    """
+    Fuzzy matches candidate keywords against stored normalized movie titles.
+    """
+    if not cleaned_input:
         return None
 
-    potential_titles = [
-        title
-        for title in all_titles_lower
-        if len(title) >= min_title_len
+    words_list = cleaned_input.split()
+    candidate_words = [
+        word for word in words_list if word not in intent_only_keywords
     ]
+    candidate = " ".join(candidate_words).strip()
 
-    result = process.extractOne(
+    if not candidate:
+        candidate = cleaned_input
+
+    results = process.extract(
         candidate,
-        potential_titles,
+        all_titles_lower,
         scorer=fuzz.token_set_ratio,
+        limit=5,
     )
 
-    if result:
-        matched_title, score, _ = result
+    for matched_title, score, _ in results:
+        if len(matched_title.split()) == 1 and len(candidate.split()) > 1:
+            continue
 
-        if score >= fuzzy_cutoff:
+        effective_cutoff = 85 if len(candidate) <= 3 else fuzzy_cutoff
+        if score >= effective_cutoff:
             return matched_title
 
     return None
 
 
 def find_vector_movie(
-    user_message,
+    cleaned_input,
     vector_cutoff=0.45,
-    min_title_len=4,
 ):
-    cleaned_input = normalize_text(user_message)
-
+    """
+    TF-IDF character n-gram cosine similarity fallback matching on normalized titles.
+    """
     candidate_words = [
         word
         for word in cleaned_input.split()
-        if word not in requirement_words
+        if word not in intent_only_keywords
     ]
 
     candidate = " ".join(candidate_words).strip()
 
-    if len(candidate) < 3:
+    if len(candidate) < 2:
         return None
 
     candidate_vector = title_vectorizer.transform([candidate])
@@ -302,50 +353,91 @@ def find_vector_movie(
         title_vectors,
     )[0]
 
-    best_index = int(np.argmax(similarities))
-    best_title = all_titles_lower[best_index]
-    best_score = float(similarities[best_index])
+    top_indices = np.argsort(similarities)[::-1][:5]
 
-    if (
-        best_score >= vector_cutoff
-        and len(best_title) >= min_title_len
-    ):
+    for idx in top_indices:
+        best_title = all_titles_lower[idx]
+        best_score = float(similarities[idx])
+
+        if best_score < vector_cutoff:
+            break
+
+        if len(best_title.split()) == 1 and len(candidate.split()) > 1:
+            continue
+
         return best_title
 
     return None
 
 
-def find_movie_in_message(user_message):
-    exact_match = find_exact_movie(user_message)
-
+def match_pipeline(cleaned_text):
+    """Executes exact -> token overlap -> fuzzy -> vector matching cascade."""
+    exact_match = find_exact_movie(cleaned_text)
     if exact_match is not None:
         return exact_match
 
-    fuzzy_match = find_fuzzy_movie(user_message)
+    overlap_match = find_token_overlap_movie(cleaned_text)
+    if overlap_match is not None:
+        return overlap_match
 
+    fuzzy_match = find_fuzzy_movie(cleaned_text)
     if fuzzy_match is not None:
         return fuzzy_match
 
-    vector_match = find_vector_movie(user_message)
-
+    vector_match = find_vector_movie(cleaned_text)
     if vector_match is not None:
         return vector_match
 
     return None
 
 
-def get_movie_row(user_message):
-    matched_title = find_movie_in_message(user_message)
+def find_movie_in_message(user_message):
+    """
+    Double-Track Matching Engine:
+    Track 1: Match raw input first against accent-normalized titles.
+    Track 2: Fall back to spell-corrected text if raw input fails.
+    """
+    raw_normalized = normalize_text(user_message)
+    matched = match_pipeline(raw_normalized)
+    if matched is not None:
+        return matched
 
-    if matched_title is None:
+    corrected_message = correct_spelling(user_message)
+    corrected_normalized = normalize_text(corrected_message)
+    return match_pipeline(corrected_normalized)
+
+
+def get_movie_row(matched_norm_title):
+    """
+    Retrieves the DataFrame record for a matched normalized movie title.
+    Maps back to the original title and resolves duplicates by popularity/revenue/votes.
+    """
+    if not matched_norm_title:
+        return None
+
+    original_title = title_norm_to_original.get(matched_norm_title)
+    if not original_title:
         return None
 
     matches = df_cleaned[
-        df_cleaned["title"].astype(str).str.lower() == matched_title.lower()
+        df_cleaned["title"].astype(str).str.lower() == original_title.lower()
     ]
 
     if matches.empty:
+        # Fallback search if exact original case string isn't found directly
+        matches = df_cleaned[
+            df_cleaned["title"].astype(str).apply(lambda x: remove_accents(x.lower())) == matched_norm_title
+        ]
+
+    if matches.empty:
         return None
+
+    sort_cols = [
+        col for col in ["popularity", "vote_count", "revenue", "budget"]
+        if col in matches.columns
+    ]
+    if sort_cols:
+        matches = matches.sort_values(by=sort_cols, ascending=False)
 
     return matches.iloc[0]
 
@@ -420,22 +512,27 @@ def predict_class(
 # REMOVE MOVIE TITLE WORDS BEFORE INTENT CLASSIFICATION
 # ============================================================
 
-def strip_title_words(text, matched_title, threshold=85):
-    if not matched_title:
+def strip_title_words(text, matched_norm_title, threshold=85):
+    if not matched_norm_title:
         return text
 
-    title_words = matched_title.split()
+    pattern = re.compile(re.escape(matched_norm_title), re.IGNORECASE)
+    stripped = pattern.sub("", text).strip()
+
+    if stripped:
+        return stripped
+
+    title_words = matched_norm_title.split()
     text_words = text.split()
     kept_words = []
 
     for word in text_words:
-
         matched = False
-
         for title_word in title_words:
-
-            # Avoid matching very short title words against arbitrary words.
             if len(title_word) < 3:
+                if word.lower() == title_word.lower():
+                    matched = True
+                    break
                 continue
 
             if fuzz.ratio(
@@ -482,25 +579,24 @@ def chatbot_response(user_message, algorithm="mlp"):
         return "❌ Please enter a question."
 
     # --------------------------------------------------------
-    # STEP 1: SPELL CORRECTION
+    # STEP 1: FIND MOVIE (DUAL-TRACK: RAW & CORRECTED)
+    # --------------------------------------------------------
+    matched_norm_title = find_movie_in_message(user_message)
+
+    # --------------------------------------------------------
+    # STEP 2: PREPARE INTENT INPUT
     # --------------------------------------------------------
     corrected_message = correct_spelling(user_message)
-
-    # --------------------------------------------------------
-    # STEP 2: FIND MOVIE FIRST
-    # --------------------------------------------------------
-    matched_title = find_movie_in_message(corrected_message)
-
-    # --------------------------------------------------------
-    # STEP 3: REMOVE MOVIE TITLE FROM INTENT INPUT
-    # --------------------------------------------------------
     intent_input = strip_title_words(
         corrected_message,
-        matched_title,
+        matched_norm_title,
     )
 
+    if not intent_input.strip():
+        intent_input = corrected_message
+
     # --------------------------------------------------------
-    # STEP 4: PREDICT INTENT USING SELECTED MODEL
+    # STEP 3: PREDICT INTENT USING SELECTED MODEL
     # --------------------------------------------------------
     predictions = predict_class(
         intent_input,
@@ -509,12 +605,10 @@ def chatbot_response(user_message, algorithm="mlp"):
     )
 
     # --------------------------------------------------------
-    # STEP 5: HANDLE NO PREDICTION
+    # STEP 4: HANDLE NO PREDICTION
     # --------------------------------------------------------
     if not predictions:
-        # A bare movie title is naturally interpreted as a
-        # request for general movie information.
-        if matched_title is not None:
+        if matched_norm_title is not None:
             tag = "search_movie"
         else:
             return (
@@ -526,8 +620,7 @@ def chatbot_response(user_message, algorithm="mlp"):
         tag = predictions[0][0]
 
     # --------------------------------------------------------
-    # STEP 6: GREETING / GOODBYE
-    # THESE ARE CLASSIFIED BY THE MODEL, NOT A RULE OVERRIDE.
+    # STEP 5: GREETING / GOODBYE
     # --------------------------------------------------------
     if tag in {"greeting", "goodbye"}:
         response = get_intent_response(tag)
@@ -544,18 +637,18 @@ def chatbot_response(user_message, algorithm="mlp"):
         return "Goodbye! Enjoy your movie night!"
 
     # --------------------------------------------------------
-    # STEP 7: OTHER INTENTS REQUIRE A MOVIE
+    # STEP 6: OTHER INTENTS REQUIRE A MOVIE
     # --------------------------------------------------------
-    if matched_title is None:
+    if matched_norm_title is None:
         return (
             "❌ I couldn't identify the movie title. "
             "Please include the movie name."
         )
 
     # --------------------------------------------------------
-    # STEP 8: GET MOVIE RECORD
+    # STEP 7: GET MOVIE RECORD (WITH AMBIGUITY RESOLUTION)
     # --------------------------------------------------------
-    row = get_movie_row(corrected_message)
+    row = get_movie_row(matched_norm_title)
 
     if row is None:
         return (
@@ -564,43 +657,60 @@ def chatbot_response(user_message, algorithm="mlp"):
         )
 
     # --------------------------------------------------------
+    # STEP 8: SAFE DATA FIELD FORMATTING
+    # --------------------------------------------------------
+    try:
+        rel_date_str = pd.to_datetime(row["release_date"]).strftime('%B %d, %Y')
+    except Exception:
+        rel_date_str = str(row.get("release_date", "Unknown"))
+
+    budget_val = row.get("budget", 0)
+    revenue_val = row.get("revenue", 0)
+    runtime_val = row.get("runtime", 0)
+
+    budget_str = f"${budget_val:,.0f}" if pd.notnull(budget_val) else "N/A"
+    revenue_str = f"${revenue_val:,.0f}" if pd.notnull(revenue_val) else "N/A"
+    runtime_str = f"{int(runtime_val)} minutes" if pd.notnull(runtime_val) else "N/A"
+
+    # --------------------------------------------------------
     # STEP 9: GENERATE RESPONSE
     # --------------------------------------------------------
 
     if tag == "search_movie":
         return (
             f"🎬 **Movie:** {row['title']}\n"
-            f"🔹 Collection: {row['belongs_to_collection']}\n"
-            f"🔹 Genres: {row['genres']}\n"
-            f"🔹 Languages: {row['spoken_languages']}\n"
-            f"🔹 Runtime: {int(row['runtime'])} minutes\n"
-            f"🔹 Rating: {row['vote_average']}/10\n"
-            f"🔹 Budget: ${row['budget']:,.0f}\n"
-            f"🔹 Revenue: ${row['revenue']:,.0f}\n"
-            f"🔹 Tagline: \"{row['tagline']}\"\n"
-            f"📝 Summary: {row['overview']}"
+            f"🔹 Collection: {row.get('belongs_to_collection', 'Unknown')}\n"
+            f"🔹 Genres: {row.get('genres', 'N/A')}\n"
+            f"🔹 Languages: {row.get('spoken_languages', 'N/A')}\n"
+            f"🔹 Runtime: {runtime_str}\n"
+            f"🔹 Rating: {row.get('vote_average', 'N/A')}/10\n"
+            f"🔹 Budget: {budget_str}\n"
+            f"🔹 Revenue: {revenue_str}\n"
+            f"🔹 Tagline: \"{row.get('tagline', '')}\"\n"
+            f"📝 Summary: {row.get('overview', 'N/A')}"
         )
 
     if tag == "ask_genre":
         return (
             f"🎭 **{row['title']}** belongs to: "
-            f"{row['genres']}."
+            f"{row.get('genres', 'N/A')}."
         )
 
     if tag == "ask_runtime":
         return (
             f"⏱️ **{row['title']}** runs for "
-            f"{int(row['runtime'])} minutes."
+            f"{runtime_str}."
         )
 
     if tag == "ask_rating":
         return (
             f"⭐ **{row['title']}** has a rating of "
-            f"{row['vote_average']}/10."
+            f"{row.get('vote_average', 'N/A')}/10."
         )
 
     if tag == "ask_collection":
-        if row["belongs_to_collection"] == "Unknown":
+        col = row.get("belongs_to_collection", "Unknown")
+        if col == "Unknown" or pd.isna(col):
             return (
                 f"📦 **{row['title']}** is not part "
                 f"of a known collection."
@@ -608,37 +718,37 @@ def chatbot_response(user_message, algorithm="mlp"):
 
         return (
             f"📦 **{row['title']}** is part of "
-            f"{row['belongs_to_collection']}."
+            f"{col}."
         )
 
     if tag == "ask_revenue":
         return (
             f"💰 **{row['title']}** earned "
-            f"${row['revenue']:,.0f}."
+            f"{revenue_str}."
         )
 
     if tag == "ask_budget":
         return (
             f"🎥 **{row['title']}** had a production budget of "
-            f"${row['budget']:,.0f}."
+            f"{budget_str}."
         )
 
     if tag == "ask_summary":
         return (
             f"📝 **{row['title']}** — "
-            f"{row['overview']}"
+            f"{row.get('overview', 'N/A')}"
         )
 
     if tag == "ask_language":
         return (
             f"🗣️ **{row['title']}** is spoken in: "
-            f"{row['spoken_languages']}."
+            f"{row.get('spoken_languages', 'N/A')}."
         )
 
     if tag == "ask_release_date":
         return (
             f"📅 **{row['title']}** was released on "
-            f"{row['release_date'].strftime('%B %d, %Y')}."
+            f"{rel_date_str}."
         )
 
     return "🤔 Sorry, I didn't quite catch that."
