@@ -323,7 +323,7 @@ def find_token_overlap_movie(cleaned_input):
 
 def find_fuzzy_movie(
     cleaned_input,
-    fuzzy_cutoff=65,
+    fuzzy_cutoff=80,
 ):
     """
     Fuzzy matches candidate keywords against stored normalized movie titles.
@@ -360,7 +360,7 @@ def find_fuzzy_movie(
 
 def find_vector_movie(
     cleaned_input,
-    vector_cutoff=0.45,
+    vector_cutoff=0.60,
 ):
     """
     TF-IDF character n-gram cosine similarity fallback matching on normalized titles.
