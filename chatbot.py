@@ -266,21 +266,18 @@ def find_exact_movie(cleaned_input):
 
 
 def find_token_overlap_movie(cleaned_input):
-    """
-    Ranks movie titles using stemmed token F1-score balancing against normalized titles.
-    """
     words_list = cleaned_input.split()
     candidate_words = [w for w in words_list if w not in intent_only_keywords]
 
     if not candidate_words:
         return None
 
+    candidate_str = " ".join(candidate_words)
     candidate_stemmed = [stemmer.stem(w) for w in candidate_words]
     cand_len = len(candidate_stemmed)
 
     best_title = None
-    max_overlap = 0
-    best_f1 = 0.0
+    best_score = -1.0
 
     for norm_title, title_words in title_word_lists:
         title_stemmed = [stemmer.stem(w) for w in title_words]
@@ -289,25 +286,40 @@ def find_token_overlap_movie(cleaned_input):
         overlap_words = set(candidate_stemmed).intersection(set(title_stemmed))
         overlap_count = len(overlap_words)
 
-        if overlap_count > 0:
-            f1 = (2.0 * overlap_count) / (cand_len + title_len)
+        if overlap_count == 0:
+            continue
 
-            if title_len == 1 and cand_len > 1:
-                f1 *= 0.1
+        # 1. Base Token F1-score
+        f1 = (2.0 * overlap_count) / (cand_len + title_len)
 
-            if (overlap_count > max_overlap) or (
-                overlap_count == max_overlap and f1 > best_f1
-            ):
-                max_overlap = overlap_count
-                best_f1 = f1
-                best_title = norm_title
+        # 2. Query Coverage: Percentage of query tokens matched
+        cand_coverage = overlap_count / cand_len
+        score = (cand_coverage * 0.7) + (f1 * 0.3)
 
-    min_required = 1 if cand_len == 1 else 2
-    if max_overlap >= min_required and best_f1 >= 0.25:
+        # 3. Calculate length ratio to prevent sub-phrase hijacking
+        len_ratio = min(cand_len, title_len) / max(cand_len, title_len)
+
+        # Check contiguous phrase alignment
+        norm_title_str = " ".join(title_words)
+        is_contiguous = norm_title_str in candidate_str or candidate_str in norm_title_str
+
+        # Apply boost ONLY if candidate length is proportional to the query.
+        # Prevents short titles (e.g., "The Jewel") from hijacking longer queries 
+        # that happen to contain those words (e.g., "Pokémon: Arceus and the Jewel of Life").
+        if is_contiguous and overlap_count == title_len:
+            if len_ratio >= 0.6:
+                score += 0.3  # Boost for matching proportional title length
+            else:
+                score *= 0.8  # Penalize embedded short-phrase false positives
+
+        if score > best_score:
+            best_score = score
+            best_title = norm_title
+
+    if best_title is not None and best_score >= 0.55:
         return best_title
 
     return None
-
 
 def find_fuzzy_movie(
     cleaned_input,
