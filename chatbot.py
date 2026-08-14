@@ -133,6 +133,8 @@ intent_only_keywords = {
     "score", "how", "much", "many", "long", "which"
 }
 
+INTENT_TARGETS = list(intent_only_keywords)
+
 # Full requirement word list used for exact sentence matching validation
 requirement_words = intent_only_keywords.union({
     "the", "of", "for", "on", "about", "a", "an", "movie", "film",
@@ -165,21 +167,37 @@ def correct_spelling(text):
 
     for word in text.lower().split():
 
+        # 1. Keep static overrides minimal (only for compound/franchise words)
         if word in common_typo_overrides:
             corrected_words.append(common_typo_overrides[word])
             continue
 
-        # Protect valid dictionary words, title words, and intent words from segmentation
+        # 2. Preserve valid dictionary words, title words, and requirement words
         if word in spell or word in domain_words or word in requirement_words:
             corrected_words.append(word)
             continue
 
-        segmented = segment_word(word)
+        # 3. Dynamic Fuzzy Intent Matching
+        # Catch typos for intent keywords (e.g., 'buget', 'ratin', 'revnue')
+        if len(word) >= 3:
+            intent_match = process.extractOne(
+                word,
+                INTENT_TARGETS,
+                scorer=fuzz.ratio,
+                score_cutoff=75  # Auto-correct to intent keyword if similarity >= 75%
+            )
+            if intent_match:
+                matched_word, score, _ = intent_match
+                corrected_words.append(matched_word)
+                continue
 
+        # 4. Word Segmentation (wordninja)
+        segmented = segment_word(word)
         if segmented is not None:
             corrected_words.append(segmented)
             continue
 
+        # 5. General spell checker fallback
         correction = spell.correction(word)
         corrected_words.append(correction if correction else word)
 
