@@ -678,15 +678,15 @@ def chatbot_response(user_message, algorithm="mlp"):
 
     if tag == "search_movie":
         return (
-            f"🎬 **Movie:** {row['title']}\n"
-            f"🔹 Collection: {row.get('belongs_to_collection', 'Unknown')}\n"
-            f"🔹 Genres: {row.get('genres', 'N/A')}\n"
-            f"🔹 Languages: {row.get('spoken_languages', 'N/A')}\n"
-            f"🔹 Runtime: {runtime_str}\n"
-            f"🔹 Rating: {row.get('vote_average', 'N/A')}/10\n"
-            f"🔹 Budget: {budget_str}\n"
-            f"🔹 Revenue: {revenue_str}\n"
-            f"🔹 Tagline: \"{row.get('tagline', '')}\"\n"
+            f"🎬 **Movie:** {row['title']}\n\n"
+            f"🔹 Collection: {row.get('belongs_to_collection', 'Unknown')}\n\n"
+            f"🔹 Genres: {row.get('genres', 'N/A')}\n\n"
+            f"🔹 Languages: {row.get('spoken_languages', 'N/A')}\n\n"
+            f"🔹 Runtime: {runtime_str}\n\n"
+            f"🔹 Rating: {row.get('vote_average', 'N/A')}/10\n\n"
+            f"🔹 Budget: {budget_str}\n\n"
+            f"🔹 Revenue: {revenue_str}\n\n"
+            f"🔹 Tagline: \"{row.get('tagline', '')}\"\n\n"
             f"📝 Summary: {row.get('overview', 'N/A')}"
         )
 
