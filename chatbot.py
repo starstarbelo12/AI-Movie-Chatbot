@@ -130,7 +130,7 @@ intent_only_keywords = {
     "date", "when", "was", "tell", "me", "details", "detail",
     "information", "info", "find", "search", "look", "up",
     "check", "give", "show", "please", "cost", "made", "earned",
-    "score", "how", "much", "many", "long", "which"
+    "score", "how", "much", "many", "long", "which", "year", "years"
 }
 
 INTENT_TARGETS = list(intent_only_keywords)
