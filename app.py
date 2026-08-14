@@ -163,6 +163,7 @@ if user_message:
         if st.session_state.show_debug and debug_str:
             st.caption(debug_str)
 
+    st.rerun()
 
 # ============================================================
 # SIDEBAR
