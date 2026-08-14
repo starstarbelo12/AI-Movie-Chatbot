@@ -4,9 +4,8 @@ from chatbot import chatbot_response
 
 
 # ============================================================
-# PAGE CONFIG
+# PAGE CONFIGURATION
 # ============================================================
-
 st.set_page_config(
     page_title="AI Movie Chatbot",
     page_icon="🎬",
@@ -15,9 +14,8 @@ st.set_page_config(
 
 
 # ============================================================
-# SESSION STATE
+# SESSION STATE INITIALIZATION
 # ============================================================
-
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -29,169 +27,94 @@ if "show_debug" not in st.session_state:
 
 
 # ============================================================
-# TITLE
+# SIDEBAR (MODEL SELECTION & CONTROLS)
 # ============================================================
+with st.sidebar:
+    st.title("⚙️ Engine & Settings")
 
+    # Model Switcher
+    st.session_state.selected_model = st.radio(
+        "Select AI Model:",
+        ["MLP", "Naive Bayes"],
+        index=0 if st.session_state.selected_model == "MLP" else 1,
+        help="Select the ML engine used for query intent classification."
+    )
+
+    st.divider()
+
+    # Debug Mode Toggle
+    st.session_state.show_debug = st.checkbox(
+        "🐞 Show Debug Info",
+        value=st.session_state.show_debug,
+        help="Displays active model and inference latency (in ms) under responses."
+    )
+
+    st.divider()
+
+    # Clear Conversation Button
+    if st.button("🗑️ Clear Chat", use_container_width=True):
+        st.session_state.messages = []
+        st.rerun()
+
+
+# ============================================================
+# MAIN INTERFACE & TITLE
+# ============================================================
 st.title("🎬 AI Movie Chatbot")
-
 st.write(
     "Ask about a movie's genre, rating, runtime, budget, "
-    "revenue, language, release date, collection, or summary."
+    "revenue, language, release date, collection, or plot summary!"
 )
 
 
 # ============================================================
 # CHAT HISTORY
 # ============================================================
-
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
-        # Display stored debug info if Debug Mode is enabled
-        if "debug_info" in message and st.session_state.show_debug and message["debug_info"]:
+        if message["role"] == "assistant" and st.session_state.show_debug and message.get("debug_info"):
             st.caption(message["debug_info"])
 
 
 # ============================================================
-# MODEL SELECTION + CHAT INPUT
+# CHAT INPUT (ROOT SCOPE -> NATIVE STICKY BOTTOM ANCHOR)
 # ============================================================
-
-model_col, chat_col = st.columns(
-    [0.22, 0.78],
-    vertical_alignment="bottom",
-)
-
-
-with model_col:
-
-    with st.popover(
-        f"🤖 {st.session_state.selected_model}",
-        use_container_width=True,
-    ):
-
-        st.markdown("### Select AI Model")
-
-        mlp_selected = st.button(
-            "🧠 MLP",
-            use_container_width=True,
-        )
-
-        nb_selected = st.button(
-            "📊 Naive Bayes",
-            use_container_width=True,
-        )
-
-        if mlp_selected:
-            st.session_state.selected_model = "MLP"
-            st.rerun()
-
-        if nb_selected:
-            st.session_state.selected_model = "Naive Bayes"
-            st.rerun()
-
-
-with chat_col:
-
-    user_message = st.chat_input(
-        "Ask about a movie..."
-    )
-
-
-# Convert displayed model name to the value expected by chatbot_response().
+# Map UI selection to the string expected by chatbot_response()
 algorithm = {
     "MLP": "mlp",
     "Naive Bayes": "nb",
 }[st.session_state.selected_model]
 
 
-# ============================================================
-# HANDLE USER MESSAGE
-# ============================================================
+if user_message := st.chat_input("Ask about a movie..."):
 
-if user_message:
-
-    # -------------------------
-    # Add user message
-    # -------------------------
-    st.session_state.messages.append(
-        {
-            "role": "user",
-            "content": user_message,
-        }
-    )
-
+    # --- 1. Render & Append User Message ---
+    st.session_state.messages.append({"role": "user", "content": user_message})
     with st.chat_message("user"):
         st.markdown(user_message)
 
-    # -------------------------
-    # Generate response & record latency
-    # -------------------------
+    # --- 2. Generate AI Response & Track Latency ---
     start_time = time.perf_counter()
     debug_str = ""
 
     try:
-
-        response = chatbot_response(
-            user_message,
-            algorithm=algorithm,
-        )
-
-        # Calculate inference time in milliseconds
+        response = chatbot_response(user_message, algorithm=algorithm)
         latency_ms = (time.perf_counter() - start_time) * 1000
         debug_str = f"⚙️ **Model:** {st.session_state.selected_model} | ⏱️ **Latency:** {latency_ms:.2f} ms"
-
     except Exception as exc:
+        response = f"⚠️ The chatbot encountered an error while processing your request: {exc}"
 
-        response = (
-            "⚠️ The chatbot encountered an error while "
-            f"processing your request: {exc}"
-        )
-
-    # -------------------------
-    # Add assistant response
-    # -------------------------
-    assistant_msg = {
-        "role": "assistant",
-        "content": response,
-        "debug_info": debug_str,
-    }
-    
-    st.session_state.messages.append(assistant_msg)
-
+    # --- 3. Render & Append Assistant Message ---
     with st.chat_message("assistant"):
         st.markdown(response)
         if st.session_state.show_debug and debug_str:
             st.caption(debug_str)
 
-    st.rerun()
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": response,
+        "debug_info": debug_str,
+    })
 
-# ============================================================
-# SIDEBAR
-# ============================================================
-
-with st.sidebar:
-
-    st.subheader("⚙️ Settings & Model Info")
-
-    st.write(
-        f"Currently selected: "
-        f"**{st.session_state.selected_model}**"
-    )
-
-    st.divider()
-
-    # Debug Mode Toggle Switch
-    st.session_state.show_debug = st.checkbox(
-        "🐞 Show Debug Info",
-        value=st.session_state.show_debug,
-        help="Displays inference latency and active model under each response.",
-    )
-
-    st.divider()
-
-    if st.button(
-        "🗑️ Clear Chat",
-        use_container_width=True,
-    ):
-        st.session_state.messages = []
-        st.rerun()
+    # NO st.rerun() needed — Streamlit renders the new message smoothly inline!
