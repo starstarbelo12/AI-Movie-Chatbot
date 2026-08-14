@@ -14,42 +14,20 @@ It features a **Multi-Model Intent Classifier** (MLP vs. Naive Bayes) paired wit
   * Real-time model switching in UI with inference latency tracking.
 
 * **🔍 Hybrid Multi-Track Movie Matching Engine**:
-  * **Track 1**: Exact string & accent normalization matching.
-  * **Track 2**: Token overlap & Stemming matching.
-  * **Track 3**: Fuzzy matching powered by `RapidFuzz`.
-  * **Track 4**: Sub-word Char-WB TF-IDF Vector Cosine Similarity.
-  * Includes `WordNinja` segmentation and custom domain spell-checking.
+  * Multi-track matching pipeline: Exact, Token Overlap, Fuzzy (`RapidFuzz`), and TF-IDF Cosine Similarity.
+  * Includes spell-checking and alias resolution for phonetic queries (e.g., Chinese Pinyin titles).
 
 * **🛡️ Robust Logic & Hardening**:
-  * Title-word stripping before intent classification to avoid entity-intent collision.
-  * Calibrated thresholds to prevent false positives/hallucinations (explicit "Not Found" handling).
-
-* **🎨 Sleek Streamlit UI**:
-  * Embedded bottom-fixed chat input layout.
-  * Expandable intent confidence inspection panel (Predict Score).
+  * Entity stripping before classification to avoid intent-entity confusion.
+  * Strictly calibrated fallback logic to prevent hallucinations.
 
 ---
 
 ## 🛠️ Tech Stack
 
-* **Frontend / Framework**: Streamlit, Custom CSS
+* **Frontend**: Streamlit, Custom CSS
 * **NLP & Processing**: NLTK, WordNinja, PySpellChecker, RapidFuzz
-* **Machine Learning & Vectorization**: Scikit-Learn (MLPClassifier, MultinomialNB, TfidfVectorizer), NumPy, Pandas
-
----
-
----
-
-## 📊 Model Comparison (MLP vs. Naive Bayes)
-
-| Feature                | Naive Bayes (`nb`)                        | Multi-Layer Perceptron (`mlp`)             |
-|  :---                  |                  :---                     |                       :---                 |
-| **Type**               | Statistical Probabilistic Model           | Artificial Neural Network                  |
-| **Probability Output** | Extreme / Polarized (e.g., 98.4% vs 0.1%) | Smooth / Calibrated (e.g., 41.3% vs 35.8%) |
-| **Ambiguity Handling** | Overconfident on single key terms         | Evaluates competing context keywords       |
-| **Inference Speed**    | Ultra Fast                                | Extremely Fast                             |
-
----
+* **Machine Learning**: Scikit-Learn (MLPClassifier, MultinomialNB, TfidfVectorizer), NumPy, Pandas
 
 ---
 
@@ -59,18 +37,43 @@ It features a **Multi-Model Intent Classifier** (MLP vs. Naive Bayes) paired wit
 
 Ensure you have Python 3.9+ installed.
 
-### 2. Installation
+### 2. Installation & Setup
 
 Clone the repository and install required dependencies:
 
-```
-git clone https://github.com/your-username/movie-chatbot.git
+```bash
+git clone [https://github.com/your-username/movie-chatbot.git](https://github.com/your-username/movie-chatbot.git)
 cd movie-chatbot
 pip install -r requirements.txt
 ```
 
+Download required NLTK packages (run once):
+
+```bash
+python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
+```
+
 ### 3. Launch the Application
 
-```
+Make sure all model files (`*.pkl`) and `intents.json` are in the project root directory, then run:
+
+```bash
 streamlit run app.py
+```
+
+---
+
+## 📁 Project Structure
+
+```text
+├── app.py              # Main Streamlit UI entry point
+├── chatbot.py          # Core chatbot logic & inference pipeline
+├── style.css           # Custom UI styling
+├── intents.json        # Intent training patterns and responses
+├── df_cleaned.pkl      # Cleaned movie database
+├── mlp_model.pkl       # Trained MLP model checkpoint
+├── nb_model.pkl        # Trained Naive Bayes model checkpoint
+├── words.pkl           # Trained vocabulary dictionary
+├── classes.pkl         # Intent class tags
+└── requirements.txt    # Python package dependencies
 ```
