@@ -1,3 +1,4 @@
+import time
 import streamlit as st
 from chatbot import chatbot_response
 
@@ -23,6 +24,9 @@ if "messages" not in st.session_state:
 if "selected_model" not in st.session_state:
     st.session_state.selected_model = "MLP"
 
+if "show_debug" not in st.session_state:
+    st.session_state.show_debug = False
+
 
 # ============================================================
 # TITLE
@@ -43,20 +47,13 @@ st.write(
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        # Display stored debug info if Debug Mode is enabled
+        if "debug_info" in message and st.session_state.show_debug and message["debug_info"]:
+            st.caption(message["debug_info"])
 
 
 # ============================================================
 # MODEL SELECTION + CHAT INPUT
-# ============================================================
-#
-# The model selector is placed immediately beside the chat
-# input, similar to the model selector in Claude.
-#
-# Click the model button to choose:
-#   - MLP
-#   - Naive Bayes
-#
-# The selected model is then passed to chatbot_response().
 # ============================================================
 
 model_col, chat_col = st.columns(
@@ -100,8 +97,7 @@ with chat_col:
     )
 
 
-# Convert displayed model name to the value expected
-# by chatbot_response().
+# Convert displayed model name to the value expected by chatbot_response().
 algorithm = {
     "MLP": "mlp",
     "Naive Bayes": "nb",
@@ -128,14 +124,21 @@ if user_message:
         st.markdown(user_message)
 
     # -------------------------
-    # Generate response
+    # Generate response & record latency
     # -------------------------
+    start_time = time.perf_counter()
+    debug_str = ""
+
     try:
 
         response = chatbot_response(
             user_message,
             algorithm=algorithm,
         )
+
+        # Calculate inference time in milliseconds
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        debug_str = f"⚙️ **Model:** {st.session_state.selected_model} | ⏱️ **Latency:** {latency_ms:.2f} ms"
 
     except Exception as exc:
 
@@ -147,15 +150,18 @@ if user_message:
     # -------------------------
     # Add assistant response
     # -------------------------
-    st.session_state.messages.append(
-        {
-            "role": "assistant",
-            "content": response,
-        }
-    )
+    assistant_msg = {
+        "role": "assistant",
+        "content": response,
+        "debug_info": debug_str,
+    }
+    
+    st.session_state.messages.append(assistant_msg)
 
     with st.chat_message("assistant"):
         st.markdown(response)
+        if st.session_state.show_debug and debug_str:
+            st.caption(debug_str)
 
 
 # ============================================================
@@ -164,11 +170,20 @@ if user_message:
 
 with st.sidebar:
 
-    st.subheader("AI Model")
+    st.subheader("⚙️ Settings & Model Info")
 
     st.write(
         f"Currently selected: "
         f"**{st.session_state.selected_model}**"
+    )
+
+    st.divider()
+
+    # Debug Mode Toggle Switch
+    st.session_state.show_debug = st.checkbox(
+        "🐞 Show Debug Info",
+        value=st.session_state.show_debug,
+        help="Displays inference latency and active model under each response.",
     )
 
     st.divider()
