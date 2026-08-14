@@ -609,9 +609,14 @@ def chatbot_response(user_message, algorithm="mlp"):
         corrected_message,
         matched_norm_title,
     )
-
     if not intent_input.strip():
-        intent_input = corrected_message
+        predictions = [("search_movie", 1.0)]
+    else:
+        predictions = predict_class(
+            intent_input,
+            algorithm=algorithm,
+            error_threshold=0.10,
+        )
 
     # --------------------------------------------------------
     # STEP 3: PREDICT INTENT USING SELECTED MODEL
