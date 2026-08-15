@@ -33,7 +33,9 @@ div[data-testid="stPopover"] {
     justify-content: flex-end !important;
 }
 
-/* Slim transparent popover button */
+/* Slim transparent popover button — now theme-aware:
+   uses Streamlit's --text-color variable instead of a hardcoded white,
+   so it reads dark-on-light in Light mode and light-on-dark in Dark mode. */
 div[data-testid="stPopover"] button,
 button[data-testid="stPopoverButton"] {
     width: auto !important;
@@ -43,7 +45,8 @@ button[data-testid="stPopoverButton"] {
     min-height: 32px !important;
     margin: 0 !important;
     font-size: 12px !important;
-    color: rgba(255, 255, 255, 0.85) !important;
+    color: var(--text-color) !important;
+    opacity: 1 !important;
     background-color: transparent !important;
     border: none !important;
     box-shadow: none !important;
@@ -53,6 +56,7 @@ button[data-testid="stPopoverButton"] {
 }
 
 div[data-testid="stPopover"] button:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important;
+    background-color: color-mix(in srgb, var(--text-color) 8%, transparent) !important;
     color: #ffffff !important;
+    opacity: 1 !important;
 }
