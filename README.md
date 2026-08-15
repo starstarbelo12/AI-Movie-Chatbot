@@ -66,14 +66,35 @@ streamlit run app.py
 ## 📁 Project Structure
 
 ```text
-├── app.py              # Main Streamlit UI entry point
-├── chatbot.py          # Core chatbot logic & inference pipeline
-├── style.css           # Custom UI styling
-├── intents.json        # Intent training patterns and responses
-├── df_cleaned.pkl      # Cleaned movie database
-├── mlp_model.pkl       # Trained MLP model checkpoint
-├── nb_model.pkl        # Trained Naive Bayes model checkpoint
-├── words.pkl           # Trained vocabulary dictionary
-├── classes.pkl         # Intent class tags
-└── requirements.txt    # Python package dependencies
+AI-Movie-Chatbot/
+├── src/
+│   └── chatbot/              # Main application package
+│       ├── __init__.py
+│       ├── paths.py          # Centralized path management
+│       ├── core.py           # Main chatbot orchestration
+│       ├── models.py         # Load ML models & data
+│       ├── text_processing.py
+│       ├── movie_matching.py
+│       ├── intent_classifier.py
+│       ├── mlp_classifier.py
+│       ├── naive_bayes_classifier.py
+│       └── response_formatter.py
+│
+├── data/
+│   └── models/               # ML models & pickled data
+│       ├── mlp_model.pkl
+│       ├── nb_model.pkl
+│       ├── words.pkl
+│       ├── classes.pkl
+│       └── df_cleaned.pkl
+│
+├── config/                   # Configuration files
+│   └── intents.json
+│
+├── static/                   # Static assets
+│   └── style.css
+│
+├── app.py                    # Entry point (updated imports)
+├── requirements.txt
+└── README.md
 ```
