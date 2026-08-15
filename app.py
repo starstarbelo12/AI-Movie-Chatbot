@@ -1,6 +1,7 @@
 import time
 import streamlit as st
-from chatbot import chatbot_response
+from src.chatbot import chatbot_response
+from src.chatbot.paths import STYLE_CSS_PATH
 
 # Page configuration
 st.set_page_config(
@@ -10,9 +11,12 @@ st.set_page_config(
 )
 
 # Load external CSS file
-def load_css(file_path="style.css"):
-    with open(file_path, "r", encoding="utf-8") as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+def load_css(css_path=STYLE_CSS_PATH):
+    try:
+        with open(css_path, "r", encoding="utf-8") as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.warning(f"CSS file not found at {css_path}")
 
 load_css()
 
