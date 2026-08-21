@@ -1,5 +1,5 @@
 import streamlit as st
-from chatbot import chatbot_response
+from src.chatbot import chatbot_response
 
 
 # ============================================================
