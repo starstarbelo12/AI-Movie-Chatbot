@@ -9,7 +9,7 @@ from .intent_classifier import predict_class, strip_title_words
 from .response_formatter import generate_response
 
 
-def chatbot_response(user_message, algorithm="mlp"):
+def chatbot_response(user_message, algorithm="hybrid"):
     """
     Main chatbot orchestration function.
     Coordinates between modules: movie matching, intent classification, and response generation.
