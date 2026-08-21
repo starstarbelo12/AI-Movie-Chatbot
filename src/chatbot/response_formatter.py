@@ -85,9 +85,12 @@ def generate_response(tag, row=None):
             f"🔹 Genres: {row.get('genres', 'N/A')}\n\n"
             f"🔹 Languages: {row.get('spoken_languages', 'N/A')}\n\n"
             f"🔹 Runtime: {runtime_str}\n\n"
-            f"🔹 Rating: {row.get('vote_average', 'N/A')}/10\n\n"
+            f"🔹 Rating: {row.get('vote_average', 'N/A')}/10 ({int(row.get('vote_count', 0)):,} votes)\n\n"
+            f"🔹 Popularity: {row.get('popularity', 0.0):.1f}\n\n"
             f"🔹 Budget: {budget_str}\n\n"
             f"🔹 Revenue: {revenue_str}\n\n"
+            f"🔹 Production: {row.get('production_companies', 'Unknown')}\n\n"
+            f"🔹 Country: {row.get('production_countries', 'Unknown')}\n\n"
             f"🔹 Tagline: \"{row.get('tagline', '')}\"\n\n"
             f"📝 Summary: {row.get('overview', 'N/A')}"
         )
@@ -153,13 +156,24 @@ def generate_response(tag, row=None):
             f"{rel_date_str}."
         )
 
+    if tag == "ask_production_companies":
+        comps = row.get("production_companies", "Unknown")
+        if comps == "Unknown" or pd.isna(comps):
+            return f"🏢 **{row['title']}** has no listed production company."
+        return f"🏢 **{row['title']}** was produced by {comps}."
+
+    if tag == "ask_production_countries":
+        countries = row.get("production_countries", "Unknown")
+        if countries == "Unknown" or pd.isna(countries):
+            return f"🌍 **{row['title']}** has no listed production country."
+        return f"🌍 **{row['title']}** was produced in {countries}."
+
+    if tag == "ask_vote_count":
+        votes = row.get("vote_count", 0)
+        return f"🗳️ **{row['title']}** has {int(votes):,} votes."
+
+    if tag == "ask_popularity":
+        pop = row.get("popularity", 0.0)
+        return f"🔥 **{row['title']}** has a popularity score of {pop:.1f}."
+
     return "🤔 Sorry, I didn't quite catch that."
-
-
-__all__ = [
-    "generate_response",
-    "get_intent_response",
-    "format_release_date",
-    "format_currency",
-    "format_runtime",
-]
