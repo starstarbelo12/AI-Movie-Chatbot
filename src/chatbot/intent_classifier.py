@@ -15,12 +15,6 @@ def predict_class(
     algorithm="hybrid",
     error_threshold=0.10
 ):
-
-    p = bow(sentence, words)
-
-    # No known vocabulary
-    if p.sum() == 0:
-        return []
     
     # ========================================================
     # HYBRID (MLP + KNN)
