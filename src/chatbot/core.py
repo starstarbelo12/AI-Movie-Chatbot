@@ -16,12 +16,12 @@ def chatbot_response(user_message, algorithm="hybrid"):
     """
     # Input validation
     if not isinstance(user_message, str):
-        return "❌ Please enter a text question."
+        return {"response": "❌ Please enter a text question.", "intent": "N/A", "scores": {}}
 
     user_message = user_message.strip()
 
     if not user_message:
-        return "❌ Please enter a question."
+        return {"response": "❌ Please enter a question.", "intent": "N/A", "scores": {}}
 
     # STEP 1: Find movie in message
     matched_norm_title = find_movie_in_message(user_message)
@@ -45,36 +45,56 @@ def chatbot_response(user_message, algorithm="hybrid"):
         if matched_norm_title is not None:
             tag = "search_movie"
         else:
-            return (
-                "🤔 I'm not sure I understood that. "
-                "Try asking about a movie's genre, budget, rating, "
-                "runtime, plot, language, release date, or collection."
-            )
+            return {
+                "response": (
+                    "🤔 I'm not sure I understood that. "
+                    "Try asking about a movie's genre, budget, rating, "
+                    "runtime, plot, language, release date, or collection."
+                ),
+                "intent": "N/A",
+                "scores": {},
+            }
     else:
         tag = predictions[0][0]
 
     # STEP 5: Handle greeting/goodbye
     if tag in {"greeting", "goodbye"}:
-        return generate_response(tag)
+        return {
+            "response": generate_response(tag),
+            "intent": tag,
+            "scores": dict(predictions),
+        }
 
     # STEP 6: Other intents require a movie
     if matched_norm_title is None:
-        return (
-            "❌ I couldn't identify the movie title. "
-            "Please include the movie name."
-        )
+        return {
+            "response": (
+                "❌ I couldn't identify the movie title. "
+                "Please include the movie name."
+            ),
+            "intent": tag,
+            "scores": dict(predictions),
+        }
 
     # STEP 7: Get movie record
     row = get_movie_row(matched_norm_title)
 
     if row is None:
-        return (
-            "❌ I found a possible movie title, "
-            "but couldn't retrieve its database record."
-        )
+        return {
+            "response": (
+                "❌ I found a possible movie title, "
+                "but couldn't retrieve its database record."
+            ),
+            "intent": tag,
+            "scores": dict(predictions),
+        }
 
     # STEP 8: Generate response using formatter
-    return generate_response(tag, row)
+    return {
+        "response": generate_response(tag, row),
+        "intent": tag,
+        "scores": dict(predictions),
+    }
 
 
 __all__ = [
