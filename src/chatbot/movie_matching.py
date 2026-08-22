@@ -27,7 +27,8 @@ stemmer = PorterStemmer()
 title_norm_to_original = {}
 
 for raw_title in df_cleaned["title"].astype(str).drop_duplicates():
-    norm = remove_accents(raw_title.lower())
+    # norm = remove_accents(raw_title.lower())
+    norm = normalize_text(raw_title)
     if norm not in title_norm_to_original:
         title_norm_to_original[norm] = raw_title
 
