@@ -90,7 +90,7 @@ with st.bottom:
     with col_model:
         with st.popover(st.session_state.selected_model, use_container_width=False):
             st.markdown("### Select AI Model")
-            if st.button("🧠 Hybrid Model", use_container_width=True):
+            if st.button("🧠 Hybrid Model (MLP + KNN)", use_container_width=True):
                 st.session_state.selected_model = "Hybrid"
                 st.rerun()
             if st.button("📊 Naive Bayes (NB)", use_container_width=True):
