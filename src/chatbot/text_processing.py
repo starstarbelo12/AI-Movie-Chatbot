@@ -89,7 +89,7 @@ intent_only_keywords = {
     "buzz", "hype", "index", "rank", "attention", "getting",
     "interest", "public", "demand", "sought", "after", "current",
     "level", "buzzworthy", "hit", "liked", "engagement", "talked",
-    "metric", "trend", "it", "this",
+    "metric", "trend", "it", "this", "overall", "total"
 
 }
 
