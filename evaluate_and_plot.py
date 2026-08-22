@@ -163,30 +163,26 @@ fig3.subplots_adjust(bottom=0.22)
 plt.savefig("Fig3_Real_Per_Intent_F1.png", dpi=300)
 plt.close()
 
-# --- Figure 4: Measured latency versus accuracy trade-off ---
-fig4, ax4_left = plt.subplots(figsize=(6.5, 4.5))
+# --- Figure 4: Measured accuracy and latency ---
+fig4, (ax4a, ax4b) = plt.subplots(1, 2, figsize=(9, 4))
 models = ["Naive Bayes", "Hybrid Model"]
 accs = [nb_res["acc"] * 100, hybrid_res["acc"] * 100]
 lats = [nb_res["avg_latency"], hybrid_res["avg_latency"]]
 
-bars = ax4_left.bar(models, accs, width=0.4, color='#2171b5', alpha=0.85)
-ax4_left.set_ylabel("Accuracy (%)", color='#2171b5', fontweight='bold')
-ax4_left.set_ylim(0, 110)
+bars1 = ax4a.bar(models, accs, color='#2171b5', width=0.4)
+ax4a.set_ylabel("Accuracy (%)", fontweight='bold')
+ax4a.set_ylim(80, 100)
+ax4a.set_title("(a) Classification Accuracy", fontweight='bold')
+ax4a.bar_label(bars1, fmt='%.1f%%', padding=3)
 
-ax4_right = ax4_left.twinx()
-ax4_right.plot(models, lats, color='#d95f02', marker='o', linewidth=2.5, markersize=8)
-ax4_right.set_ylabel("Measured Latency (ms)", color='#d95f02', fontweight='bold')
+bars2 = ax4b.bar(models, lats, color='#d95f02', width=0.4)
+ax4b.set_ylabel("Inference Latency (ms)", fontweight='bold')
+ax4b.set_ylim(0, max(lats) * 1.25 if lats else 1)
+ax4b.set_title("(b) Average Inference Latency", fontweight='bold')
+ax4b.bar_label(bars2, fmt='%.2f ms', padding=3)
 
-max_lat = max(lats) if len(lats) > 0 else 100
-ax4_right.set_ylim(0, max_lat * 1.5 + 10)
-
-ax4_left.set_title("Figure 4: Measured Latency vs Accuracy", fontweight='bold')
-
-for i, txt in enumerate(lats):
-    ax4_right.annotate(f'{txt:.2f} ms', (models[i], lats[i]), xytext=(0, 10),
-                       textcoords="offset points", ha='center', color='#d95f02', fontweight='bold')
-
-plt.savefig("Fig4_Real_Latency_vs_Accuracy.png", dpi=300)
+fig4.tight_layout()
+plt.savefig("Fig4_Improved_Subplots.png", dpi=300)
 plt.close()
 
 print("✅ All charts have been calculated and generated based on your actual algorithm execution results!")
