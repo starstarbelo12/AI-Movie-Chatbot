@@ -55,11 +55,21 @@ python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
 
 ### 3. Launch the Application
 
-Make sure all model files (`*.pkl`) and `intents.json` are in the project root directory, then run:
+The application expects the model files in `data/models/` and `intents.json` in `config/`. Then run:
 
 ```bash
 streamlit run app.py
 ```
+
+### 4. Evaluate the Classifiers
+
+Run the evaluation script to test both classifiers against all labeled patterns in `config/intents.json`:
+
+```bash
+python evaluate_and_plot.py
+```
+
+The script calculates accuracy, precision, recall, F1 scores, confusion matrices, and inference latency. It generates four PNG files, including `Fig4_Improved_Subplots.png` for the separate accuracy and latency charts.
 
 ---
 
@@ -76,13 +86,13 @@ AI-Movie-Chatbot/
 │       ├── text_processing.py
 │       ├── movie_matching.py
 │       ├── intent_classifier.py
-│       ├── mlp_classifier.py
+│       ├── hybrid_classifier.py
 │       ├── naive_bayes_classifier.py
 │       └── response_formatter.py
 │
 ├── data/
 │   └── models/               # ML models & pickled data
-│       ├── mlp_model.pkl
+│       ├── hybrid_model.pkl
 │       ├── nb_model.pkl
 │       ├── words.pkl
 │       ├── classes.pkl
