@@ -546,14 +546,22 @@ def find_prefix_containment_title(candidate_words, min_title_len=4):
 
 def find_compact_title(candidate_words, min_title_len=4):
     """Match titles when users omit spaces, such as ``ironman 3``."""
-    candidate = re.sub(r"[^a-z0-9]", "", "".join(candidate_words))
+    candidate = re.sub(
+        r"[^a-z0-9]",
+        "",
+        "".join(word for word in candidate_words if word not in {"the", "a", "an"}),
+    )
     if len(candidate) < 3:
         return None
 
     for title in all_titles_lower:
         if len(title) < min_title_len:
             continue
-        compact_title = re.sub(r"[^a-z0-9]", "", title)
+        compact_title = re.sub(
+            r"[^a-z0-9]",
+            "",
+            "".join(word for word in title.split() if word not in {"the", "a", "an"}),
+        )
         if compact_title == candidate:
             return title
 
