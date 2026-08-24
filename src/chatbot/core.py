@@ -433,20 +433,20 @@ def format_intent_response(tag, row):
 
     if tag == "search_movie":
         return (
-            f"🎬 **Movie:** {row['title']}\n"
-            f"🔹 Collection: {row['belongs_to_collection']}\n"
-            f"🔹 Genres: {row['genres']}\n"
-            f"🔹 Languages: {row['spoken_languages']}\n"
-            f"🔹 Runtime: {int(row['runtime'])} minutes\n"
-            f"🔹 Rating: {row['vote_average']}/10 "
+            f"🎬 **Movie: {row['title']}**\n\n"
+            f"- **Collection:** {row['belongs_to_collection']}\n"
+            f"- **Genres:** {row['genres']}\n"
+            f"- **Languages:** {row['spoken_languages']}\n"
+            f"- **Runtime:** {int(row['runtime'])} minutes\n"
+            f"- **Rating:** {row['vote_average']}/10 "
             f"({int(row['vote_count']):,} votes)\n"
-            f"🔹 Popularity: {row['popularity']:.1f}\n"
-            f"🔹 Budget: ${row['budget']:,.0f}\n"
-            f"🔹 Revenue: ${row['revenue']:,.0f}\n"
-            f"🔹 Production: {row['production_companies']}\n"
-            f"🔹 Country: {row['production_countries']}\n"
-            f"🔹 Tagline: \"{row['tagline']}\"\n"
-            f"📝 Summary: {row['overview']}"
+            f"- **Popularity:** {row['popularity']:.1f}\n"
+            f"- **Budget:** ${row['budget']:,.0f}\n"
+            f"- **Revenue:** ${row['revenue']:,.0f}\n"
+            f"- **Production:** {row['production_companies']}\n"
+            f"- **Country:** {row['production_countries']}\n"
+            f"- **Tagline:** \"{row['tagline']}\"\n\n"
+            f"📝 **Summary:** {row['overview']}"
         )
 
     elif tag == "ask_genre":
