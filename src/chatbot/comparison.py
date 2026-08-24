@@ -2,6 +2,11 @@
 # COMPARISON HELPERS
 # ============================================================
 
+from .models import df_cleaned
+from .text_processing import normalize_text
+from .movie_matching import title_norm_to_original
+from .ranking import has_reliable_budget
+
 def get_movie_rows(movie_titles):
     rows = []
     for title in movie_titles:
