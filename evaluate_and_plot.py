@@ -175,7 +175,7 @@ ax4a.set_ylim(80, 100)
 ax4a.set_title("(a) Classification Accuracy", fontweight='bold')
 ax4a.bar_label(bars1, fmt='%.1f%%', padding=3)
 
-bars2 = ax4b.bar(models, lats, color='#d95f02', width=0.4)
+bars2 = ax4b.bar(models, lats, color='#9ecae1', width=0.4)
 ax4b.set_ylabel("Inference Latency (ms)", fontweight='bold')
 ax4b.set_ylim(0, max(lats) * 1.25 if lats else 1)
 ax4b.set_title("(b) Average Inference Latency", fontweight='bold')
