@@ -143,77 +143,164 @@ def get_genre_filtered_df(user_message):
 
     return filtered_df, detected_genre.title()
 
-
 def rank_movies(tag, user_message):
     config = RANKING_CONFIG[tag]
     column = config["column"]
 
-    # 1. Filter by genre if present, otherwise default to full dataset
-    target_df, detected_genre = get_genre_filtered_df(user_message)
+    # ========================================================
+    # 1. Filter by genre if present
+    # ========================================================
 
+    target_df, detected_genre = get_genre_filtered_df(
+        user_message
+    )
+
+    # ========================================================
+    # 2. Keep the columns needed for ranking
+    # ========================================================
+
+    rank_columns = [
+        "title",
+        column,
+    ]
+
+    # Include genres so we can display them when a genre
+    # was requested.
     if "genres" in target_df.columns:
-            rank_columns.append("genres")
+        rank_columns.append("genres")
 
-    ranked = target_df[
-        rank_columns
-    ].dropna(
-        subset=[column]
-    ).copy()
+    ranked = (
+        target_df[rank_columns]
+        .dropna(subset=[column])
+        .copy()
+    )
 
+    # ========================================================
+    # 3. Reliability filters
+    # ========================================================
 
     # Popularity must be at least 0.1
     if "popularity" in target_df.columns:
-        ranked = ranked[target_df.loc[ranked.index, "popularity"] >= 0.1]
+        ranked = ranked[
+            target_df.loc[
+                ranked.index,
+                "popularity"
+            ] >= 0.1
+        ]
 
     # Vote count must be at least 10
     if "vote_count" in target_df.columns:
-        ranked = ranked[target_df.loc[ranked.index, "vote_count"] >= 10]
+        ranked = ranked[
+            target_df.loc[
+                ranked.index,
+                "vote_count"
+            ] >= 10
+        ]
+
+    # ========================================================
+    # 4. Ranking-specific filters
+    # ========================================================
 
     if column == "budget":
-        ranked = ranked[ranked[column].map(has_reliable_budget)]
-    elif column == "revenue":
-        ranked = ranked[ranked[column] > 0]
-    elif column == "vote_average":
-        # Drop unrated movies (0.0) so they don't skew the "worst rating" results
-        ranked = ranked[ranked[column] > 0.1]
+        ranked = ranked[
+            ranked[column].map(
+                has_reliable_budget
+            )
+        ]
 
-    ranked = ranked.drop_duplicates(subset=["title"]).sort_values(
-        by=column,
-        ascending=(get_rank_direction(user_message) == "ascending"),
-        kind="stable",
-    ).head(get_rank_count(user_message))
+    elif column == "revenue":
+        ranked = ranked[
+            ranked[column] > 0
+        ]
+
+    elif column == "vote_average":
+        # Remove unrated movies
+        ranked = ranked[
+            ranked[column] > 0.1
+        ]
+
+    # ========================================================
+    # 5. Sort and limit
+    # ========================================================
+
+    ranked = (
+        ranked
+        .drop_duplicates(
+            subset=["title"]
+        )
+        .sort_values(
+            by=column,
+            ascending=(
+                get_rank_direction(user_message)
+                == "ascending"
+            ),
+            kind="stable",
+        )
+        .head(
+            get_rank_count(user_message)
+        )
+    )
 
     if ranked.empty:
-        return "❌ I couldn't find enough reliable movie data for that ranking."
+        return (
+            "❌ I couldn't find enough reliable "
+            "movie data for that ranking."
+        )
 
-    direction = "lowest" if get_rank_direction(user_message) == "ascending" else "highest"
+    # ========================================================
+    # 6. Ranking heading
+    # ========================================================
 
-    # 2. Format title depending on whether a genre was detected
-    genre_label = f" {detected_genre}" if detected_genre else ""
-    lines = [f"🏆 **{direction.title()} {config['label']}{genre_label} movies:**"]
+    direction = (
+        "lowest"
+        if get_rank_direction(user_message)
+        == "ascending"
+        else "highest"
+    )
 
-        for position, (_, movie) in enumerate(
-    ranked.iterrows(),
-    start=1
-):
-        
+    genre_label = (
+        f" {detected_genre}"
+        if detected_genre
+        else ""
+    )
+
+    lines = [
+        f"🏆 **{direction.title()} "
+        f"{config['label']}"
+        f"{genre_label} movies:**"
+    ]
+
+    # ========================================================
+    # 7. Display ranked movies
+    # ========================================================
+
+    for position, (_, movie) in enumerate(
+        ranked.iterrows(),
+        start=1,
+    ):
         line = (
             f"{position}. **{movie['title']}** — "
             f"{config['format'](movie[column])}"
-    )
+        )
 
-    if detected_genre and "genres" in ranked.columns:
-        movie_genres = str(
-            movie["genres"]
-        ).strip()
-
+        # Only display genre when the USER requested a genre.
         if (
-            movie_genres
-            and movie_genres.lower()
-            not in {"nan", "unknown"}
+            detected_genre
+            and "genres" in ranked.columns
         ):
-            line += f" — Genre: {movie_genres}"
+            movie_genres = str(
+                movie["genres"]
+            ).strip()
 
-    lines.append(line)
+            if (
+                movie_genres
+                and movie_genres.lower()
+                not in {"nan", "unknown"}
+            ):
+                line += (
+                    f" — Genre: {movie_genres}"
+                )
+
+        lines.append(line)
 
     return "\n".join(lines)
