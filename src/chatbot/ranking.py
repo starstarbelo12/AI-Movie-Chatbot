@@ -3,6 +3,7 @@ from .models import df_cleaned
 from .text_processing import normalize_text
 
 MIN_RELIABLE_BUDGET = 500_000
+MAX_RANK_RESULTS = 10
 
 RANKING_CONFIG = {
     "rank_rating": {"column": "vote_average", "label": "rating", "format": lambda value: f"{value:.1f}/10"},
@@ -28,7 +29,7 @@ def get_rank_direction(text):
 
 
 def get_rank_count(text, default=5):
-    """Return an explicitly requested count, defaulting to 5 and never exceeding 10."""
+    """Return the requested result count, capped at the supported maximum."""
     normalized = normalize_text(text)
     count_patterns = (
         r"\b(?:top|bottom|first|last|show|list|display|give)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b",
@@ -38,8 +39,29 @@ def get_rank_count(text, default=5):
         match = re.search(pattern, normalized)
         if match:
             requested = NUMBER_WORDS.get(match.group(1), None)
-            return max(1, min(requested if requested is not None else int(match.group(1)), 10))
+            return max(
+                1,
+                min(
+                    requested if requested is not None else int(match.group(1)),
+                    MAX_RANK_RESULTS,
+                ),
+            )
     return default
+
+
+def requested_rank_count(text):
+    """Return an explicitly requested count before applying the result cap."""
+    normalized = normalize_text(text)
+    count_patterns = (
+        r"\b(?:top|bottom|first|last|show|list|display|give)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b",
+        r"\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:top|bottom|highest|lowest|most|least|best|worst|biggest|smallest|longest|shortest|cheapest)\b",
+    )
+    for pattern in count_patterns:
+        match = re.search(pattern, normalized)
+        if match:
+            value = match.group(1)
+            return NUMBER_WORDS[value] if value in NUMBER_WORDS else int(value)
+    return None
 
 
 # Exact legitimate genres found in movies_metadata.csv
@@ -264,6 +286,14 @@ def rank_movies(tag, user_message):
         else ""
     )
 
+    requested_count = requested_rank_count(user_message)
+    limit_notice = (
+        f"\n\n_Note: showing {MAX_RANK_RESULTS} results maximum; "
+        "this chatbot does not support more than 10 ranking results._"
+        if requested_count and requested_count > MAX_RANK_RESULTS
+        else ""
+    )
+
     lines = [
         f"🏆 **{direction.title()} "
         f"{config['label']}"
@@ -303,4 +333,4 @@ def rank_movies(tag, user_message):
 
         lines.append(line)
 
-    return "\n".join(lines)
+    return "\n".join(lines) + limit_notice
