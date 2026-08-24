@@ -75,10 +75,11 @@ def compare_movies(movie_titles, user_message):
 
     for metric in metrics:
         label, column, formatter = label_map[metric]
-        lines.append(f"\n**{label}**")
+        lines.append(f"\n### {label}\n")
 
         for r in rows:
-            lines.append(f"• {r['title']}: {formatter(r[column])}")
+            lines.append(f"- **{r['title']}**: {formatter(r[column])}")
+            lines.append("")
 
         # Calculate lowest or highest dynamically
         if find_lowest:
@@ -90,7 +91,7 @@ def compare_movies(movie_titles, user_message):
         winners = [r['title'] for r in rows if r[column] == target_val]
         winner_str = "All movies are equal" if len(winners) == len(rows) else ", ".join(winners)
 
-        lines.append(f"→ {direction_label} {label.lower()}: **{winner_str}**")
+        lines.append(f"**{direction_label} {label.lower()}:** {winner_str}")
 
     # Only show financial profit if BOTH budget and revenue are being compared
     if "budget" in metrics and "revenue" in metrics:
@@ -127,14 +128,16 @@ def compare_budget_and_revenue(movie_titles, user_message):
                 f"• {result}")
 
     titles_header = " vs ".join([r['title'] for r in rows])
-    lines = [f"💰 **Budget and Revenue Comparison:** {titles_header}", "", f"**Budget**"]
+    lines = [f"💰 **Budget and Revenue Comparison:** {titles_header}", "", "### Budget", ""]
 
     for r in rows:
-        lines.append(f"• {r['title']}: ${r['budget']:,.0f}")
+        lines.append(f"- **{r['title']}**: ${r['budget']:,.0f}")
+        lines.append("")
 
-    lines.extend(["", f"**Revenue**"])
+    lines.extend(["", "### Revenue", ""])
     for r in rows:
-        lines.append(f"• {r['title']}: ${r['revenue']:,.0f}")
+        lines.append(f"- **{r['title']}**: ${r['revenue']:,.0f}")
+        lines.append("")
 
     max_budget = max([r["budget"] for r in rows])
     b_winners = [r["title"] for r in rows if r["budget"] == max_budget]
@@ -144,6 +147,6 @@ def compare_budget_and_revenue(movie_titles, user_message):
     r_winners = [r["title"] for r in rows if r["revenue"] == max_revenue]
     r_winner = "All movies are equal" if len(r_winners) == len(rows) else ", ".join(r_winners)
 
-    lines.extend(["", f"→ Higher budget: **{b_winner}**", f"→ Higher revenue: **{r_winner}**"])
+    lines.extend(["", f"**Higher budget:** {b_winner}", f"**Higher revenue:** {r_winner}"])
 
     return "\n".join(lines)
