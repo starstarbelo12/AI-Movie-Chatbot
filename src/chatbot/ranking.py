@@ -61,29 +61,87 @@ GENRE_ALIASES = {
 
 def get_genre_filtered_df(user_message):
     """
-    Extracts genre from user query and returns (filtered_df, genre_display_name).
-    If no genre is found, returns (df_cleaned, None).
+    Detect a genre from the user's query and return only movies
+    belonging to that genre.
+
+    Returns:
+        (filtered_df, genre_display_name)
+
+    If no genre is detected, returns:
+        (df_cleaned, None)
     """
-    normalized = normalize_text(user_message)
 
-    # Sort by length descending to catch multi-word genres (e.g., "science fiction") first
-    all_search_terms = sorted(list(KNOWN_GENRES) + list(GENRE_ALIASES.keys()), key=len, reverse=True)
+    normalized_query = normalize_text(user_message)
 
-    for term in all_search_terms:
-        if re.search(rf"\b{re.escape(term)}\b", normalized):
-            # Map the alias back to the exact dataset spelling if needed
-            target_genre = GENRE_ALIASES.get(term, term)
+    # Normalize aliases so "sci-fi", "sci fi", and "scifi"
+    # can all map to the same dataset genre.
+    normalized_aliases = {
+        normalize_text(alias): genre
+        for alias, genre in GENRE_ALIASES.items()
+    }
 
-            # Filter df_cleaned for rows where the genres column contains the target_genre
-            filtered_df = df_cleaned[
-                df_cleaned["genres"].astype(str).str.lower().str.contains(target_genre, na=False)
-            ]
+    # Search longer phrases first, e.g. "science fiction"
+    search_terms = sorted(
+        set(
+            [normalize_text(g) for g in KNOWN_GENRES]
+            + list(normalized_aliases.keys())
+        ),
+        key=len,
+        reverse=True,
+    )
 
-            if not filtered_df.empty:
-                return filtered_df, target_genre.title()
+    detected_genre = None
 
-    # Fallback to the full dataset if no genre detected
-    return df_cleaned, None
+    for term in search_terms:
+        if re.search(
+            rf"\b{re.escape(term)}\b",
+            normalized_query,
+        ):
+            detected_genre = normalized_aliases.get(
+                term,
+                term,
+            )
+            break
+
+    # No genre in the query
+    if detected_genre is None:
+        return df_cleaned, None
+
+    # Normalize the genre that will be searched in the dataset
+    normalized_target_genre = normalize_text(
+        detected_genre
+    )
+
+    # Normalize the entire genres column.
+    #
+    # This works whether the dataset contains:
+    #   "Science Fiction, Adventure"
+    #   "['Science Fiction', 'Adventure']"
+    #   '[{"name": "Science Fiction"}, {"name": "Adventure"}]'
+    normalized_genres = (
+        df_cleaned["genres"]
+        .fillna("")
+        .astype(str)
+        .map(normalize_text)
+    )
+
+    # Match the normalized genre against the normalized
+    # dataset genre text.
+    genre_mask = normalized_genres.str.contains(
+        re.escape(normalized_target_genre),
+        na=False,
+        regex=True,
+    )
+
+    filtered_df = df_cleaned[genre_mask].copy()
+
+    # If a genre was detected but nothing matched, do NOT
+    # silently return the entire dataset. That would cause
+    # exactly the problem seen in your screenshot.
+    if filtered_df.empty:
+        return filtered_df, detected_genre.title()
+
+    return filtered_df, detected_genre.title()
 
 
 def rank_movies(tag, user_message):
@@ -93,7 +151,14 @@ def rank_movies(tag, user_message):
     # 1. Filter by genre if present, otherwise default to full dataset
     target_df, detected_genre = get_genre_filtered_df(user_message)
 
-    ranked = target_df[["title", column]].dropna(subset=[column]).copy()
+    if "genres" in target_df.columns:
+            rank_columns.append("genres")
+
+    ranked = target_df[
+        rank_columns
+    ].dropna(
+        subset=[column]
+    ).copy()
 
 
     # Popularity must be at least 0.1
@@ -127,7 +192,28 @@ def rank_movies(tag, user_message):
     genre_label = f" {detected_genre}" if detected_genre else ""
     lines = [f"🏆 **{direction.title()} {config['label']}{genre_label} movies:**"]
 
-    for position, (_, movie) in enumerate(ranked.iterrows(), start=1):
-        lines.append(f"{position}. **{movie['title']}** — {config['format'](movie[column])}")
+        for position, (_, movie) in enumerate(
+    ranked.iterrows(),
+    start=1
+):
+        
+        line = (
+            f"{position}. **{movie['title']}** — "
+            f"{config['format'](movie[column])}"
+    )
+
+    if detected_genre and "genres" in ranked.columns:
+        movie_genres = str(
+            movie["genres"]
+        ).strip()
+
+        if (
+            movie_genres
+            and movie_genres.lower()
+            not in {"nan", "unknown"}
+        ):
+            line += f" — Genre: {movie_genres}"
+
+    lines.append(line)
 
     return "\n".join(lines)
