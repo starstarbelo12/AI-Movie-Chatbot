@@ -494,7 +494,7 @@ def find_best_fuzzy_title(candidate_words, fuzzy_cutoff=70, min_title_len=4):
     return None
 
 comparison_connectors = re.compile(
-    r"\b(?:and|or|vs|versus|against|between|compared to|compare to)\b"
+    r"\b(?:and|or|vs|versus|against|between|compared to|compare to|to)\b"
 )
 
 def find_prefix_containment_title(candidate_words, min_title_len=4):
@@ -544,6 +544,21 @@ def find_prefix_containment_title(candidate_words, min_title_len=4):
 
     return normalize_text(candidates_df.iloc[0]["title"])
 
+def find_compact_title(candidate_words, min_title_len=4):
+    """Match titles when users omit spaces, such as ``ironman 3``."""
+    candidate = re.sub(r"[^a-z0-9]", "", "".join(candidate_words))
+    if len(candidate) < 3:
+        return None
+
+    for title in all_titles_lower:
+        if len(title) < min_title_len:
+            continue
+        compact_title = re.sub(r"[^a-z0-9]", "", title)
+        if compact_title == candidate:
+            return title
+
+    return None
+
 def find_movies_in_message(user_message, max_movies=15, fuzzy_cutoff=70, min_title_len=4):
     cleaned = normalize_text(user_message)
     matches = []
@@ -560,12 +575,16 @@ def find_movies_in_message(user_message, max_movies=15, fuzzy_cutoff=70, min_tit
     for segment in comparison_connectors.split(remaining_text):
         segment_words = [
             word for word in segment.split()
-            if word not in comparison_fillers and not word.isdigit()
+            if word not in comparison_fillers
         ]
         if not segment_words or len(" ".join(segment_words)) < 3:
             continue
 
-        matched_title = find_prefix_containment_title(segment_words, min_title_len) or find_best_fuzzy_title(segment_words, fuzzy_cutoff, min_title_len)
+        matched_title = (
+            find_prefix_containment_title(segment_words, min_title_len)
+            or find_compact_title(segment_words, min_title_len)
+            or find_best_fuzzy_title(segment_words, fuzzy_cutoff, min_title_len)
+        )
         if matched_title and matched_title not in matches:
             matches.append(matched_title)
             if len(matches) == max_movies:

@@ -43,11 +43,13 @@ def remove_accents(text):
 
 # Teach the spell checker movie-title vocabulary
 domain_words = set()
+compact_title_words = set()
 
 for title in df_cleaned["title"].astype(str).str.lower():
     clean_title = remove_accents(title)
     title_words = re.findall(r"\b\w+\b", clean_title)
     domain_words.update(title_words)
+    compact_title_words.add(re.sub(r"[^a-z0-9]", "", clean_title))
 
 spell.word_frequency.load_words(domain_words)
 
@@ -126,6 +128,12 @@ def correct_spelling(text):
     corrected_words = []
 
     for word in text.lower().split():
+
+        # Keep valid compact movie titles such as "ironman" intact.
+        compact_word = re.sub(r"[^a-z0-9]", "", word)
+        if compact_word in compact_title_words:
+            corrected_words.append(word)
+            continue
 
         # 1. Keep static overrides minimal (only for compound/franchise words)
         if word in common_typo_overrides:
