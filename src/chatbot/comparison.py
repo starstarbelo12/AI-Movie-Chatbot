@@ -15,8 +15,12 @@ def get_movie_rows(movie_titles):
         if original_title is None:
             continue
         matches = df_cleaned[df_cleaned["title"].astype(str).map(normalize_text) == title_key]
-        if not matches.empty:
-            rows.append(matches.iloc[0])
+        if matches.empty:
+            continue
+        sort_cols = [c for c in ["popularity", "vote_count", "revenue", "budget"] if c in matches.columns]
+        if sort_cols:
+            matches = matches.sort_values(by=sort_cols, ascending=False)
+        rows.append(matches.iloc[0])
     return rows
 
 def requested_comparison_metrics(user_message):
