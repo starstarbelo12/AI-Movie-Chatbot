@@ -74,6 +74,21 @@ for message in st.session_state.messages:
                         if isinstance(score_val, (int, float)):
                             col_bar.progress(min(max(float(score_val), 0.0), 1.0))
 
+            if debug.get("movie_match"):
+                st.caption(
+                    f"🎬 **Movie Match:** {debug['movie_match']['title']} | "
+                    f"Method: {debug['movie_match']['method']} | "
+                    f"Match Score: {debug['movie_match']['match_score']:.2%}"
+                )
+                candidates = debug["movie_match"].get("candidates", [])
+                if len(candidates) > 1:
+                    with st.expander("🎬 Movie Match Candidates", expanded=False):
+                        st.markdown("\n".join(
+                            f"{position}. **{candidate['title']}** — "
+                            f"{candidate['confidence']:.2%}"
+                            for position, candidate in enumerate(candidates, start=1)
+                        ))
+
 # Map UI label to algorithm key
 algorithm = {
     "Hybrid": "hybrid",
@@ -107,6 +122,7 @@ if user_message:
     
     intent = "N/A"
     scores_dict = {}
+    movie_match = None
 
     try:
         res = chatbot_response(user_message, algorithm=algorithm)
@@ -117,6 +133,7 @@ if user_message:
             response = res.get("response", "")
             intent = res.get("intent", res.get("prediction", "N/A"))
             scores_dict = res.get("scores", res.get("probabilities", {}))
+            movie_match = res.get("movie_match")
         elif isinstance(res, tuple):
             response = res[0]
             intent = res[1] if len(res) > 1 else "N/A"
@@ -133,7 +150,8 @@ if user_message:
         "model": st.session_state.selected_model,
         "latency": latency_ms,
         "intent": intent,
-        "scores": scores_dict
+        "scores": scores_dict,
+        "movie_match": movie_match,
     }
 
     # Render assistant response & Debug UI elements
@@ -150,6 +168,23 @@ if user_message:
                         col_label.text(f"{intent_name}: {score_val:.2%}" if isinstance(score_val, float) else f"{intent_name}: {score_val}")
                         if isinstance(score_val, (int, float)):
                             col_bar.progress(min(max(float(score_val), 0.0), 1.0))
+
+            if debug_data.get("movie_match"):
+                st.caption(
+                    f"🎬 **Movie Match:** "
+                    f"{debug_data['movie_match']['title']} | "
+                    f"Method: {debug_data['movie_match']['method']} | "
+                    f"Match Score: "
+                    f"{debug_data['movie_match']['match_score']:.2%}"
+                )
+                candidates = debug_data["movie_match"].get("candidates", [])
+                if len(candidates) > 1:
+                    with st.expander("🎬 Movie Match Candidates", expanded=True):
+                        st.markdown("\n".join(
+                            f"{position}. **{candidate['title']}** — "
+                            f"{candidate['confidence']:.2%}"
+                            for position, candidate in enumerate(candidates, start=1)
+                        ))
 
     st.session_state.messages.append({
         "role": "assistant",

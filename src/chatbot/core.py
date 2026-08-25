@@ -10,6 +10,7 @@ from .text_processing import (
  
 from .movie_matching import ( 
     find_movie_in_message, 
+    find_movie_match, 
     get_movie_row, 
     find_movies_in_message, 
 ) 
@@ -655,9 +656,8 @@ def chatbot_response(user_message, algorithm="hybrid"):
     # STEP 5: Find normal single movie title 
     # -------------------------------------------------------- 
  
-    matched_title = find_movie_in_message( 
-        corrected_message 
-    ) 
+    movie_match = find_movie_match(user_message)
+    matched_title = movie_match["title"] if movie_match else None
  
     # -------------------------------------------------------- 
     # STEP 6: Remove movie titles before ML intent detection 
@@ -709,6 +709,12 @@ def chatbot_response(user_message, algorithm="hybrid"):
     if forced_tag is not None: 
         tag = forced_tag 
  
+    elif matched_title is not None and (
+        not predictions
+        or predictions[0][0] in {"greeting", "goodbye"}
+    ):
+        tag = "search_movie"
+
     elif predictions: 
         tag = predictions[0][0] 
  
@@ -747,6 +753,7 @@ def chatbot_response(user_message, algorithm="hybrid"):
             "response": generate_response(tag), 
             "intent": tag, 
             "scores": dict(predictions), 
+            "movie_match": movie_match,
         } 
  
     # -------------------------------------------------------- 
@@ -851,6 +858,7 @@ def chatbot_response(user_message, algorithm="hybrid"):
             ), 
             "intent": tag, 
             "scores": dict(predictions), 
+            "movie_match": movie_match,
         } 
  
     # -------------------------------------------------------- 
@@ -888,6 +896,7 @@ def chatbot_response(user_message, algorithm="hybrid"):
                 ), 
                 "intent": "multi_attribute", 
                 "scores": dict(predictions), 
+                "movie_match": movie_match,
             } 
  
     # -------------------------------------------------------- 
@@ -917,6 +926,7 @@ def chatbot_response(user_message, algorithm="hybrid"):
         ), 
         "intent": tag, 
         "scores": dict(predictions), 
+        "movie_match": movie_match,
     } 
  
  

@@ -82,6 +82,41 @@ def find_exact_movie(cleaned_input):
     return None
 
 
+def token_overlap_score(candidate, norm_title):
+    candidate_words = candidate.split()
+    title_words = norm_title.split()
+    if not candidate_words or not title_words:
+        return 0.0
+
+    candidate_stemmed = [stemmer.stem(word) for word in candidate_words]
+    title_stemmed = [stemmer.stem(word) for word in title_words]
+    overlap_count = len(
+        set(candidate_stemmed).intersection(set(title_stemmed))
+    )
+    if overlap_count == 0:
+        return 0.0
+
+    candidate_length = len(candidate_stemmed)
+    title_length = len(title_words)
+    f1 = (2.0 * overlap_count) / (candidate_length + title_length)
+    candidate_coverage = overlap_count / candidate_length
+    score = (candidate_coverage * 0.7) + (f1 * 0.3)
+
+    length_ratio = min(candidate_length, title_length) / max(
+        candidate_length,
+        title_length,
+    )
+    title_text = " ".join(title_words)
+    is_contiguous = title_text in candidate or candidate in title_text
+    if is_contiguous and overlap_count == title_length:
+        if length_ratio >= 0.6:
+            score += 0.3
+        else:
+            score *= 0.8
+
+    return score
+
+
 def find_token_overlap_movie(cleaned_input):
     words_list = cleaned_input.split()
     candidate_words = [w for w in words_list if w not in intent_only_keywords]
@@ -90,45 +125,11 @@ def find_token_overlap_movie(cleaned_input):
         return None
 
     candidate_str = " ".join(candidate_words)
-    candidate_stemmed = [stemmer.stem(w) for w in candidate_words]
-    cand_len = len(candidate_stemmed)
-
     best_title = None
     best_score = -1.0
 
-    for norm_title, title_words in title_word_lists:
-        title_stemmed = [stemmer.stem(w) for w in title_words]
-        title_len = len(title_words)
-
-        overlap_words = set(candidate_stemmed).intersection(set(title_stemmed))
-        overlap_count = len(overlap_words)
-
-        if overlap_count == 0:
-            continue
-
-        # 1. Base Token F1-score
-        f1 = (2.0 * overlap_count) / (cand_len + title_len)
-
-        # 2. Query Coverage: Percentage of query tokens matched
-        cand_coverage = overlap_count / cand_len
-        score = (cand_coverage * 0.7) + (f1 * 0.3)
-
-        # 3. Calculate length ratio to prevent sub-phrase hijacking
-        len_ratio = min(cand_len, title_len) / max(cand_len, title_len)
-
-        # Check contiguous phrase alignment
-        norm_title_str = " ".join(title_words)
-        is_contiguous = norm_title_str in candidate_str or candidate_str in norm_title_str
-
-        # Apply boost ONLY if candidate length is proportional to the query.
-        # Prevents short titles (e.g., "The Jewel") from hijacking longer queries 
-        # that happen to contain those words (e.g., "Pokémon: Arceus and the Jewel of Life").
-        if is_contiguous and overlap_count == title_len:
-            if len_ratio >= 0.6:
-                score += 0.3  # Boost for matching proportional title length
-            else:
-                score *= 0.8  # Penalize embedded short-phrase false positives
-
+    for norm_title, _ in title_word_lists:
+        score = token_overlap_score(candidate_str, norm_title)
         if score > best_score:
             best_score = score
             best_title = norm_title
@@ -161,7 +162,7 @@ def find_fuzzy_movie(
     results = process.extract(
         candidate,
         all_titles_lower,
-        scorer=fuzz.token_set_ratio,
+        scorer=fuzz.ratio,
         limit=5,
     )
 
@@ -253,6 +254,96 @@ def find_movie_in_message(user_message):
     corrected_message = correct_spelling(user_message)
     corrected_normalized = normalize_text(corrected_message)
     return match_pipeline(corrected_normalized)
+
+
+def find_movie_match(user_message):
+    """Return the movie selected by the existing matching pipeline."""
+    matched_title = find_movie_in_message(user_message)
+    if matched_title is None:
+        return None
+
+    candidate = " ".join(
+        word
+        for word in normalize_text(user_message).split()
+        if word not in requirement_words and word != "s"
+    ).strip()
+
+    exact = find_exact_movie(user_message)
+    if exact == matched_title:
+        method = "exact"
+        selected_confidence = 1.0
+    else:
+        compact_words = [
+            word
+            for word in normalize_text(user_message).split()
+            if word not in requirement_words and word != "s"
+        ]
+        compact = find_compact_title(compact_words)
+        if compact == matched_title:
+            method = "compact"
+            selected_confidence = 1.0
+        else:
+            overlap = find_token_overlap_movie(normalize_text(user_message))
+            if overlap == matched_title:
+                method = "token overlap"
+                selected_confidence = token_overlap_score(
+                    candidate,
+                    matched_title,
+                )
+            else:
+                fuzzy = find_fuzzy_movie(user_message)
+                if fuzzy == matched_title:
+                    method = "fuzzy"
+                    selected_confidence = fuzz.ratio(
+                        candidate,
+                        matched_title,
+                    ) / 100
+                else:
+                    method = "vector"
+                    vector_scores = cosine_similarity(
+                        title_vectorizer.transform([candidate]),
+                        title_vectors,
+                    )[0]
+                    selected_confidence = float(
+                        vector_scores[all_titles_lower.index(matched_title)]
+                    )
+
+    if method == "token overlap":
+        scored_candidates = sorted(
+            (
+                token_overlap_score(candidate, title),
+                title,
+            )
+            for title in all_titles_lower
+            if token_overlap_score(candidate, title) > 0
+        )
+        candidates = [
+            {"title": title, "confidence": score}
+            for score, title in reversed(scored_candidates[-3:])
+        ]
+    else:
+        candidates = [
+            {"title": title, "confidence": score / 100}
+            for title, score, _ in process.extract(
+                candidate,
+                all_titles_lower,
+                scorer=fuzz.ratio,
+                limit=3,
+            )
+        ] if candidate else []
+
+    candidates = [
+        {"title": matched_title, "confidence": selected_confidence}
+    ] + [
+        item for item in candidates if item["title"] != matched_title
+    ][:2]
+
+    return {
+        "title": matched_title,
+        "method": method,
+        "match_score": selected_confidence,
+        "candidates": candidates,
+    }
 
 def get_movie_row(matched_norm_title):
     """
@@ -363,7 +454,7 @@ def find_fuzzy_movie(user_message, fuzzy_cutoff=65, min_title_len=4):
     )
     if len(candidate) < 3:
         return None
-    result = process.extractOne(candidate, all_titles_lower, scorer=fuzz.token_set_ratio)
+    result = process.extractOne(candidate, all_titles_lower, scorer=fuzz.ratio)
     if result and result[1] >= fuzzy_cutoff and len(result[0]) >= min_title_len:
         return result[0]
     return None
@@ -409,6 +500,19 @@ def find_movie_in_message(user_message):
     exact = find_exact_movie(user_message)
     if exact is not None:
         return exact
+
+    compact_words = [
+        word
+        for word in normalize_text(user_message).split()
+        if word not in requirement_words and word != "s"
+    ]
+    compact = find_compact_title(compact_words)
+    if compact is not None:
+        return compact
+
+    overlap = find_token_overlap_movie(normalize_text(user_message))
+    if overlap is not None:
+        return overlap
 
     # 2. Fuzzy match for typos / small wording differences
     fuzzy = find_fuzzy_movie(user_message)
@@ -546,10 +650,11 @@ def find_prefix_containment_title(candidate_words, min_title_len=4):
 
 def find_compact_title(candidate_words, min_title_len=4):
     """Match titles when users omit spaces, such as ``ironman 3``."""
+    compact_stopwords = {"the", "a", "an", "of"}
     candidate = re.sub(
         r"[^a-z0-9]",
         "",
-        "".join(word for word in candidate_words if word not in {"the", "a", "an"}),
+        "".join(word for word in candidate_words if word not in compact_stopwords),
     )
     if len(candidate) < 3:
         return None
@@ -560,9 +665,22 @@ def find_compact_title(candidate_words, min_title_len=4):
         compact_title = re.sub(
             r"[^a-z0-9]",
             "",
-            "".join(word for word in title.split() if word not in {"the", "a", "an"}),
+            "".join(word for word in title.split() if word not in compact_stopwords),
         )
-        if compact_title == candidate:
+        singular_title = "".join(
+            word[:-1] if word.endswith("s") and len(word) > 3 else word
+            for word in title.split()
+            if word not in compact_stopwords
+        )
+        if (
+            compact_title == candidate
+            or singular_title == candidate
+            or (
+                len(candidate_words) >= 2
+                and len(candidate) >= 8
+                and candidate in singular_title
+            )
+        ):
             return title
 
     return None
@@ -603,6 +721,7 @@ def find_movies_in_message(user_message, max_movies=15, fuzzy_cutoff=70, min_tit
 
 __all__ = [
     "find_movie_in_message",
+    "find_movie_match",
     "find_movies_in_message",
     "get_movie_row",
     "title_norm_to_original",
