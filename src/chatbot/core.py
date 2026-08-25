@@ -74,17 +74,22 @@ def detect_supported_intent(text, comparison_titles=None):
     # 2. General movie comparison
     # --------------------------------------------------------
     comparison_words = {
-        "compare",
-        "compared",
-        "comparison",
-        "higher",
-        "lower",
-        "bigger",
-        "smaller",
-        "more",
-        "less",
-        "better",
-        "worse",
+       # classic
+        "compare", "compared", "comparison", "comparing",
+        "difference", "differ", "differs",
+        "higher", "lower", "bigger", "smaller", "greater",
+        "more", "less", "better", "worse", "between",
+
+    # connectors people actually type for face-offs
+        "vs", "vs.", "versus", "v", "or",
+
+    # casual/modern "which one wins" phrasing
+        "wins", "win", "winner", "beats", "beat", "outperforms",
+        "over",             
+        "superior", "inferior",
+        "goated", "goat",    # "greatest of all time" — used comparatively ("which is more goated")
+        "no contest", "not even close",
+        "hits harder", "smokes", "stomps", "wrecks", "destroys",
     }
 
     if len(comparison_titles) >= 2 and words & comparison_words:
