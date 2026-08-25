@@ -87,9 +87,6 @@ def detect_supported_intent(text, comparison_titles=None):
         "wins", "win", "winner", "beats", "beat", "outperforms",
         "over",             
         "superior", "inferior",
-        "goated", "goat",    # "greatest of all time" — used comparatively ("which is more goated")
-        "no contest", "not even close",
-        "hits harder", "smokes", "stomps", "wrecks", "destroys",
     }
 
     if len(comparison_titles) >= 2 and words & comparison_words:
