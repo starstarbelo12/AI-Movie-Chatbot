@@ -637,11 +637,16 @@ def chatbot_response(user_message, algorithm="hybrid"):
             forced_tag,
             corrected_message,
         )
+        ranking_predictions = predict_class(
+            corrected_message,
+            algorithm=algorithm,
+            error_threshold=0.10,
+        )
 
         return {
             "response": ranking_response,
             "intent": forced_tag,
-            "scores": {},
+            "scores": dict(ranking_predictions),
         }
 
     # --------------------------------------------------------
