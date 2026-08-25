@@ -67,9 +67,6 @@ def detect_supported_intent(text, comparison_titles=None):
         )
     )
 
-    if financial_comparison:
-        return "compare_budget_revenue"
-
     # --------------------------------------------------------
     # 2. General movie comparison
     # --------------------------------------------------------
@@ -89,7 +86,10 @@ def detect_supported_intent(text, comparison_titles=None):
         "superior", "inferior",
     }
 
-    if len(comparison_titles) >= 2 and words & comparison_words:
+    if financial_comparison:
+        return "compare_budget_revenue"
+
+    if len(comparison_titles) >= 2:
         return "compare_movies"
 
     # --------------------------------------------------------
