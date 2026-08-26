@@ -414,7 +414,7 @@ requirement_words = {
     "biggest", "smallest", "longest", "shortest", "cheapest", "expensive",
     "popular", "popularity", "votes", "vote", "count", "list", "display",
     "and", "or","compare", "compared", "comparing", "comparison", 
-    "difference", "differences", "versus", "vs",   
+    "difference", "differences", "versus", "vs", "part", "series"   
 }
 
 title_vectorizer = TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 4))
