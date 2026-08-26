@@ -891,7 +891,7 @@ def chatbot_response(user_message, algorithm="hybrid"):
  
         if response_lines: 
             return { 
-                "response": "\n".join( 
+                "response": "\\\n".join( 
                     response_lines 
                 ), 
                 "intent": "multi_attribute", 
