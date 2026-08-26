@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Movie FAQ Chatbot User Guide</title>
+  <style>
+    @page { size: A4; margin: 19mm 17mm; }
+    body { color: #1d2939; font-family: Arial, sans-serif; font-size: 10.5pt; line-height: 1.5; }
+    h1, h2 { color: #0f3d70; } h1 { font-size: 27pt; margin-bottom: 6px; } h2 { border-bottom: 1px solid #b9d5ee; font-size: 17pt; margin-top: 27px; padding-bottom: 5px; }
+    code { background: #eef4fa; border-radius: 3px; color: #123a62; font-family: Consolas, monospace; padding: 1px 4px; }
+    pre { background: #102a43; border-radius: 6px; color: white; font-family: Consolas, monospace; font-size: 9pt; padding: 12px; }
+    .hero { background: #e9f5ff; border-left: 6px solid #1976c9; margin-bottom: 21px; padding: 19px 21px; }
+    .subtitle { color: #475467; font-size: 13pt; margin: 0; } .tip { background: #eaf7ef; border-left: 4px solid #2f9e65; padding: 9px 12px; }
+    table { border-collapse: collapse; width: 100%; } th { background: #0f4c81; color: white; text-align: left; } td, th { border: 1px solid #cbd5e1; padding: 7px 9px; vertical-align: top; }
+    tr:nth-child(even) td { background: #f8fafc; } .footer { color: #667085; font-size: 8.5pt; margin-top: 25px; text-align: center; }
+  </style>
+</head>
+<body>
+  <section class="hero"><h1>Movie FAQ Chatbot</h1><p class="subtitle">User Guide for the Interactive Movie Chatbot</p></section>
+  <h2>1. Overview</h2>
+  <p>Movie FAQ Chatbot is a Streamlit application that answers natural-language questions about movies in its included dataset. It supports individual movie details, rankings, and comparisons.</p>
+  <h2>2. Start the Application</h2>
+  <p>Open a terminal in the project folder, create a virtual environment, and install the dependencies.</p>
+  <pre>python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
+streamlit run app.py</pre>
+  <p>Keep the terminal open while you use the app. Streamlit will display a local URL and usually opens it in your browser automatically.</p>
+  <h2>3. Using the Chatbot</h2>
+  <ol><li>Type a question in the chat box at the bottom of the page.</li><li>Include a movie title for questions about a specific movie.</li><li>Press Enter and read the answer in the chat history.</li></ol>
+  <p class="tip"><strong>Tip:</strong> Ask for multiple details at once: <code>Interstellar rating, runtime, and budget</code>.</p>
+  <h2>4. Settings</h2>
+  <table><tr><th>Control</th><th>What it does</th></tr><tr><td>Model selector</td><td>Switches between the Hybrid and Naive Bayes intent-classification models.</td></tr><tr><td>Show Debug Info</td><td>Shows model, latency, predicted intent, confidence scores, and movie-match details.</td></tr><tr><td>Clear Chat</td><td>Removes the current conversation from the screen.</td></tr></table>
+  <h2>5. Example Questions</h2>
+  <table><tr><th>Goal</th><th>Example question</th></tr><tr><td>Movie information</td><td><code>What is the rating of Interstellar?</code></td></tr><tr><td>Multiple details</td><td><code>Titanic genre, rating, and runtime</code></td></tr><tr><td>Plot summary</td><td><code>What is Toy Story about?</code></td></tr><tr><td>Rankings</td><td><code>Show the top 5 highest-rated horror movies</code></td></tr><tr><td>Comparison</td><td><code>Compare Titanic and Avatar</code></td></tr><tr><td>Budget and revenue</td><td><code>Did Avatar make back its budget?</code></td></tr></table>
+  <h2>6. Tips and Troubleshooting</h2>
+  <ul><li>Use official movie titles when possible; try a shorter title or corrected spelling if a match fails.</li><li>For comparisons, provide at least two movie titles.</li><li>For rankings, include a measure such as rating, revenue, budget, popularity, runtime, or vote count.</li><li>Answers are limited to the included dataset.</li><li>If Streamlit is not recognized, activate the virtual environment and run <code>pip install -r requirements.txt</code>.</li><li>If NLTK reports missing data, rerun the NLTK download command above.</li></ul>
+  <p class="footer">Movie FAQ Chatbot User Guide</p>
+</body>
+</html>

@@ -72,7 +72,7 @@ This generates accuracy, precision, recall, F1-score, confusion-matrix, and late
 What is the rating and runtime of Interstellar?
 Tell me the plot of Toy Story.
 Compare Titanic and Avatar.
-Did Barbie make back its budget?
+Did Avatar make back its budget?
 Show the top 5 highest-rated horror movies.
 ```
 
