@@ -125,10 +125,10 @@ def compare_budget_and_revenue(movie_titles, user_message):
                     f"• Revenue: ${row['revenue']:,.0f}")
         difference = row["revenue"] - row["budget"]
         result = "✅ Revenue is greater than budget." if difference > 0 else "❌ Revenue is not greater than budget."
-        return (f"💰 **{row['title']}**\n"
-                f"• Budget: ${row['budget']:,.0f}\n"
-                f"• Revenue: ${row['revenue']:,.0f}\n"
-                f"• Revenue − Budget: ${difference:,.0f}\n"
+        return (f"💰 **{row['title']}**\n\n"
+                f"• Budget: ${row['budget']:,.0f}\n\n"
+                f"• Revenue: ${row['revenue']:,.0f}\n\n"
+                f"• Revenue − Budget: ${difference:,.0f}\n\n"
                 f"• {result}")
 
     titles_header = " vs ".join([r['title'] for r in rows])
