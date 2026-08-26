@@ -104,7 +104,7 @@ def compare_movies(movie_titles, user_message):
                 lines.append(f"\n⚠️ **{row['title']}** has no reported budget in this dataset.")
                 continue
             profit_difference = row["revenue"] - row["budget"]
-            lines.append(f"\n💵 **{row['title']} financial difference:** ${profit_difference:,.0f} (Revenue − Budget)")
+            lines.append(f"\n💵 **{row['title']} Estimated Profit:** ${profit_difference:,.0f} (Revenue − Budget)")
 
     return "\n".join(lines)
 
