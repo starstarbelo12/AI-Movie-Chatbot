@@ -559,8 +559,14 @@ _stopwords_en = frozenset({
 })
 
 comparison_fillers = _stopwords_en | requirement_words | {
-    "compare", "compared", "comparing", "comparison", "versus",
+    "compare", "compared", "comparing", "comparison", "versus","vs",
     "bigger", "smaller", "higher", "lower", "greater", "two",
+    "better", "worse", "which", "than", "or", "and",
+    "between", "both", "two", "difference", "differences", "differ", "differs", "differing",
+    "differentiate", "differentiating",
+    "contrast", "contrasting", "contrasted",
+    "distinguish", "distinguishing", "distinction", "distinctions",
+    "disparity", "dissimilarity"
 }
 
 def strip_articles(words):
