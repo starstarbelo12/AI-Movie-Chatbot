@@ -28,7 +28,7 @@ A Streamlit movie chatbot for querying movie metadata with natural-language ques
 ### Installation
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/starstarbelo12/AI-Movie-Chatbot.git
 cd AI-Movie-Chatbot
 python -m venv .venv
 ```
