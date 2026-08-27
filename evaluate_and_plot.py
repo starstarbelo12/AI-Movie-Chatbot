@@ -129,15 +129,16 @@ plt.close()
 # Figures 2 and 3: Separate confusion matrices
 # A 30 x 30 matrix is intentionally unannotated so the labels remain readable.
 def save_confusion_matrix(result, title, filename):
-    fig, ax = plt.subplots(figsize=(12, 10), constrained_layout=True)
+    # Give the 30 intent labels enough room for report-sized output.
+    fig, ax = plt.subplots(figsize=(24, 22), constrained_layout=True)
     sns.heatmap(result["cm"], annot=False, cmap="Blues", cbar=True,
                 xticklabels=display_classes, yticklabels=display_classes,
                 ax=ax, vmin=0, vmax=1)
-    ax.set_title(title, fontweight="bold")
-    ax.set_xlabel("Predicted")
-    ax.set_ylabel("True")
-    ax.tick_params(axis="x", labelrotation=90, labelsize=7)
-    ax.tick_params(axis="y", labelrotation=0, labelsize=7)
+    ax.set_title(title, fontweight="bold", fontsize=24, pad=20)
+    ax.set_xlabel("Predicted", fontsize=18, labelpad=14)
+    ax.set_ylabel("True", fontsize=18, labelpad=14)
+    ax.tick_params(axis="x", labelrotation=90, labelsize=18, pad=7)
+    ax.tick_params(axis="y", labelrotation=0, labelsize=18, pad=7)
     fig.savefig(filename, dpi=300)
     plt.close(fig)
 
