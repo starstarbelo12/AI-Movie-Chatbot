@@ -84,7 +84,22 @@ print(f"Hybrid Model -> Acc: {hybrid_res['acc']:.3f}, Macro F1: {hybrid_res['f1'
 
 # Global style configurations
 sns.set_theme(style="whitegrid")
-plt.rcParams.update({"font.sans-serif": "Arial", "font.size": 11, "figure.autolayout": True})
+plt.rcParams.update({"font.sans-serif": "Arial", "font.size": 10})
+
+# Keep all 30 labels in the evaluation, but group them in plots so that
+# the figures remain readable.  These groups are operational families,
+# not a reduction of the evaluated intent set.
+INTENT_FAMILIES = {
+    "General FAQ": [
+        intent for intent in INTENT_CLASSES
+        if intent.startswith("ask_")
+        or intent in {"greeting", "goodbye", "search_movie"}
+    ],
+    "Ranking": [intent for intent in INTENT_CLASSES if intent.startswith("rank_")],
+    "Comparison": [intent for intent in INTENT_CLASSES if intent.startswith("compare_")],
+}
+
+print("Intent family sizes:", {name: len(labels) for name, labels in INTENT_FAMILIES.items()})
 
 display_classes = [i.replace("_", " ").title() for i in INTENT_CLASSES]
 
@@ -111,41 +126,65 @@ ax1.bar_label(r2, fmt='%.3f', padding=3, fontsize=9)
 plt.savefig("Fig1_Real_Overall_Metrics.png", dpi=300)
 plt.close()
 
-# Figure 2: Confusion Matrices
-fig2, (ax2a, ax2b) = plt.subplots(1, 2, figsize=(12, 5))
-sns.heatmap(nb_res["cm"], annot=True, fmt=".2f", cmap="Blues", cbar=False,
-            xticklabels=display_classes, yticklabels=display_classes, ax=ax2a)
-ax2a.set_title("(a) Measured Naive Bayes CM", fontweight='bold')
-ax2a.set_xlabel("Predicted")
-ax2a.set_ylabel("True")
+# Figures 2 and 3: Separate confusion matrices
+# A 30 x 30 matrix is intentionally unannotated so the labels remain readable.
+def save_confusion_matrix(result, title, filename):
+    fig, ax = plt.subplots(figsize=(12, 10), constrained_layout=True)
+    sns.heatmap(result["cm"], annot=False, cmap="Blues", cbar=True,
+                xticklabels=display_classes, yticklabels=display_classes,
+                ax=ax, vmin=0, vmax=1)
+    ax.set_title(title, fontweight="bold")
+    ax.set_xlabel("Predicted")
+    ax.set_ylabel("True")
+    ax.tick_params(axis="x", labelrotation=90, labelsize=7)
+    ax.tick_params(axis="y", labelrotation=0, labelsize=7)
+    fig.savefig(filename, dpi=300)
+    plt.close(fig)
 
-sns.heatmap(hybrid_res["cm"], annot=True, fmt=".2f", cmap="Blues", cbar=False,
-            xticklabels=display_classes, yticklabels=display_classes, ax=ax2b)
-ax2b.set_title("(b) Measured Hybrid Model CM", fontweight='bold')
-ax2b.set_xlabel("Predicted")
+save_confusion_matrix(nb_res, "Figure 2: Naive Bayes Confusion Matrix",
+                      "Fig2_Real_Naive_Bayes_Confusion_Matrix.png")
+save_confusion_matrix(hybrid_res, "Figure 3: Hybrid Model Confusion Matrix",
+                      "Fig3_Real_Hybrid_Confusion_Matrix.png")
 
-plt.savefig("Fig2_Real_Confusion_Matrices.png", dpi=300)
-plt.close()
+# Figures 4, 5, and 6: Separate per-intent F1 charts by family
+f1_by_intent = (
+    dict(zip(INTENT_CLASSES, nb_res["f1_per_class"])),
+    dict(zip(INTENT_CLASSES, hybrid_res["f1_per_class"])),
+)
 
-# Figure 3: Per-Intent F1 Breakdown
-fig3, ax3 = plt.subplots(figsize=(8, 5))
-y = np.arange(len(INTENT_CLASSES))
-r3a = ax3.barh(y + width/2, nb_res["f1_per_class"], width, label="Naive Bayes", color="#9ecae1")
-r3b = ax3.barh(y - width/2, hybrid_res["f1_per_class"], width, label="Hybrid Model", color="#08519c")
+def save_family_f1_chart(number, family_name, family_labels, filename):
+    positions = np.arange(len(family_labels))
+    nb_values = [f1_by_intent[0][label] for label in family_labels]
+    hybrid_values = [f1_by_intent[1][label] for label in family_labels]
+    family_display = [label.replace("_", " ").title() for label in family_labels]
 
-ax3.set_xlabel("F1-Score")
-ax3.set_title("Figure 3: Measured Per-Intent F1-Score Breakdown", fontweight='bold')
-ax3.set_yticks(y)
-ax3.set_yticklabels(display_classes)
-ax3.set_xlim(0.0, 1.05)
-ax3.legend(loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=2, frameon=True)
-ax3.bar_label(r3a, fmt='%.2f', padding=3, fontsize=9)
-ax3.bar_label(r3b, fmt='%.2f', padding=3, fontsize=9)
-fig3.subplots_adjust(bottom=0.22)
-plt.savefig("Fig3_Real_Per_Intent_F1.png", dpi=300)
-plt.close()
+    fig, ax = plt.subplots(figsize=(10, max(4.5, len(family_labels) * 0.48)))
+    nb_bars = ax.barh(positions + width / 2, nb_values, width,
+                      label="Naive Bayes", color="#9ecae1")
+    hybrid_bars = ax.barh(positions - width / 2, hybrid_values, width,
+                          label="Hybrid Model", color="#08519c")
+    ax.set_yticks(positions)
+    ax.set_yticklabels(family_display, fontsize=9)
+    ax.set_xlim(0.0, 1.05)
+    ax.set_xlabel("F1-Score")
+    ax.set_title(f"Figure {number}: Per-Intent F1-Score - {family_name}",
+                 fontweight="bold")
+    ax.grid(axis="x", alpha=0.3)
+    ax.legend(loc="lower right")
+    ax.bar_label(nb_bars, fmt="%.2f", padding=2, fontsize=7)
+    ax.bar_label(hybrid_bars, fmt="%.2f", padding=2, fontsize=7)
+    fig.tight_layout()
+    fig.savefig(filename, dpi=300)
+    plt.close(fig)
 
-# Figure 4: Accuracy & Latency Trade-Off
+save_family_f1_chart(4, "General FAQ", INTENT_FAMILIES["General FAQ"],
+                     "Fig4_Real_F1_General_FAQ.png")
+save_family_f1_chart(5, "Ranking", INTENT_FAMILIES["Ranking"],
+                     "Fig5_Real_F1_Ranking.png")
+save_family_f1_chart(6, "Comparison", INTENT_FAMILIES["Comparison"],
+                     "Fig6_Real_F1_Comparison.png")
+
+# Figure 7: Accuracy & Latency Trade-Off
 fig4, (ax4a, ax4b) = plt.subplots(1, 2, figsize=(9, 4))
 models = ["Naive Bayes", "Hybrid Model"]
 accs = [nb_res["acc"] * 100, hybrid_res["acc"] * 100]
@@ -158,14 +197,17 @@ ax4a.set_title("(a) Classification Accuracy", fontweight='bold')
 ax4a.bar_label(bars1, fmt='%.1f%%', padding=3)
 
 bars2 = ax4b.bar(models, lats, color='#9ecae1', width=0.4)
-ax4b.set_ylabel("Inference Latency (ms)", fontweight='bold')
+ax4b.set_ylabel("Classifier Inference Latency (ms)", fontweight='bold')
 max_lat = max(lats) if lats else 1.0
 ax4b.set_ylim(0, max(max_lat * 1.25, 1.0))
-ax4b.set_title("(b) Average Inference Latency", fontweight='bold')
+ax4b.set_title("(b) Average Classifier Latency", fontweight='bold')
 ax4b.bar_label(bars2, fmt='%.2f ms', padding=3)
 
 fig4.tight_layout()
-plt.savefig("Fig4_Improved_Subplots.png", dpi=300)
+fig4.suptitle("Figure 7: Accuracy and Classifier Latency Trade-Off",
+              fontweight="bold")
+fig4.tight_layout(rect=(0, 0, 1, 0.94))
+plt.savefig("Fig7_Accuracy_Latency_Tradeoff.png", dpi=300)
 plt.close()
 
 print("Execution complete. All evaluation charts generated.")

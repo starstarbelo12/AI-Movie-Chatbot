@@ -64,7 +64,7 @@ streamlit run app.py
 python evaluate_and_plot.py
 ```
 
-This generates accuracy, precision, recall, F1-score, confusion-matrix, and latency charts in the project root.
+This generates seven charts in the project root: overall metrics (Figure 1), separate Naive Bayes and Hybrid confusion matrices (Figures 2-3), separate F1-score charts for General FAQ, Ranking, and Comparison intents (Figures 4-6), and the accuracy/latency trade-off (Figure 7).
 
 ## Example Questions
 
