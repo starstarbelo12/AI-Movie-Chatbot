@@ -71,32 +71,11 @@ def detect_supported_intent(text, comparison_titles=None):
     if financial_comparison: 
         return "compare_budget_revenue" 
  
-    # -------------------------------------------------------- 
-    # 2. General movie comparison 
-    # -------------------------------------------------------- 
-    comparison_words = { 
-       # classic 
-        "compare", "compared", "comparison", "comparing", 
-        "difference", "differ", "differs", 
-        "higher", "lower", "bigger", "smaller", "greater", 
-        "more", "less", "better", "worse", "between", 
- 
-    # connectors people actually type for face-offs 
-        "vs", "vs.", "versus", "v", "or", 
- 
-    # casual/modern "which one wins" phrasing 
-        "wins", "win", "winner", "beats", "beat", "outperforms", 
-        "over",              
-        "superior", "inferior", 
-    } 
- 
-    if len(comparison_titles) >= 2 and words & comparison_words: 
-        return "compare_movies" 
- 
-    # -------------------------------------------------------- 
-    # 3. Ranking intents 
-    # -------------------------------------------------------- 
+    # --------------------------------------------------------
+    # 2. Ranking intents
+    # --------------------------------------------------------
     ranking_words = { 
+        "rank",
         "top", 
         "bottom", 
         "highest", 
@@ -186,6 +165,28 @@ def detect_supported_intent(text, comparison_titles=None):
         # "top romance movies", "best horror movies", etc. 
         # defaults to highest-rated movies. 
         return "rank_rating" 
+
+    # -------------------------------------------------------- 
+    # 3. General movie comparison 
+    # --------------------------------------------------------
+    comparison_words = { 
+       # classic 
+        "compare", "compared", "comparison", "comparing", 
+        "difference", "differ", "differs", 
+        "higher", "lower", "bigger", "smaller", "greater", 
+        "more", "less", "better", "worse", "between", 
+ 
+    # connectors people actually type for face-offs 
+        "vs", "vs.", "versus", "v", "or", 
+ 
+    # casual/modern "which one wins" phrasing 
+        "wins", "win", "winner", "beats", "beat", "outperforms", 
+        "over",              
+        "superior", "inferior", 
+    } 
+ 
+    if len(comparison_titles) >= 2 and words & comparison_words:
+        return "compare_movies" 
  
     # -------------------------------------------------------- 
     # 4. Standalone budget query 
@@ -613,7 +614,7 @@ def chatbot_response(user_message, algorithm="hybrid"):
     # -------------------------------------------------------- 
  
     comparison_titles = find_movies_in_message( 
-        corrected_message, 
+        user_message,
         max_movies=15, 
     ) 
  

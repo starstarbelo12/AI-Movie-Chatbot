@@ -34,7 +34,7 @@ def requested_comparison_metrics(user_message):
         metrics.append("revenue")
     if any(word in text for word in ["rating", "score", "rate", "star"]):
         metrics.append("rating")
-    if any(word in text for word in ["popular", "trend", "famous"]):
+    if any(word in text for word in ["popular", "popularity", "trend", "famous"]):
         metrics.append("popularity")
     if any(word in text for word in ["runtime", "duration", "long", "short"]):
         metrics.append("runtime")
