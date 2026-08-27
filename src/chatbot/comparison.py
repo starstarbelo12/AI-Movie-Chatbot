@@ -151,6 +151,8 @@ def compare_budget_and_revenue(movie_titles, user_message):
     r_winners = [r["title"] for r in rows if r["revenue"] == max_revenue]
     r_winner = "All movies are equal" if len(r_winners) == len(rows) else ", ".join(r_winners)
 
-    lines.extend(["", f"**Higher budget:** {b_winner}", f"**Higher revenue:** {r_winner}"])
+    # Keep the summary items as separate Markdown paragraphs instead of
+    # allowing Streamlit to render them on one visual line.
+    lines.extend(["", f"**Higher budget:** {b_winner}", "", f"**Higher revenue:** {r_winner}"])
 
     return "\n".join(lines)
