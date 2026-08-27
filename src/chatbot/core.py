@@ -70,6 +70,24 @@ def detect_supported_intent(text, comparison_titles=None):
  
     if financial_comparison: 
         return "compare_budget_revenue" 
+
+    # When the message names two or more movies, compare those movies before
+    # interpreting words such as "least" or "highest" as a dataset-wide
+    # ranking request.
+    comparison_words = {
+        "compare", "compared", "comparison", "comparing",
+        "difference", "differ", "differs",
+        "higher", "lower", "bigger", "smaller", "greater",
+        "more", "less", "better", "worse", "between",
+        "highest", "lowest", "most", "least", "best", "worst",
+        "biggest", "smallest", "longest", "shortest", "fewest",
+        "cheapest",
+        "vs", "vs.", "versus", "v", "or",
+        "wins", "win", "winner", "beats", "beat", "outperforms",
+        "over", "superior", "inferior",
+    }
+    if len(comparison_titles) >= 2 and words & comparison_words:
+        return "compare_movies"
  
     # --------------------------------------------------------
     # 2. Ranking intents
@@ -166,28 +184,6 @@ def detect_supported_intent(text, comparison_titles=None):
         # defaults to highest-rated movies. 
         return "rank_rating" 
 
-    # -------------------------------------------------------- 
-    # 3. General movie comparison 
-    # --------------------------------------------------------
-    comparison_words = { 
-       # classic 
-        "compare", "compared", "comparison", "comparing", 
-        "difference", "differ", "differs", 
-        "higher", "lower", "bigger", "smaller", "greater", 
-        "more", "less", "better", "worse", "between", 
- 
-    # connectors people actually type for face-offs 
-        "vs", "vs.", "versus", "v", "or", 
- 
-    # casual/modern "which one wins" phrasing 
-        "wins", "win", "winner", "beats", "beat", "outperforms", 
-        "over",              
-        "superior", "inferior", 
-    } 
- 
-    if len(comparison_titles) >= 2 and words & comparison_words:
-        return "compare_movies" 
- 
     # -------------------------------------------------------- 
     # 4. Standalone budget query 
     # -------------------------------------------------------- 
@@ -337,7 +333,7 @@ ASK_TAG_KEYWORDS = [
  
     ( 
         "ask_production_companies", 
-        {"studio", "studios"}, 
+        {"company", "companies", "studio", "studios"},
         [ 
             "production company", 
             "production companies", 
@@ -625,10 +621,20 @@ def chatbot_response(user_message, algorithm="hybrid"):
     # comparison requests are not misunderstood by the model. 
     # -------------------------------------------------------- 
  
-    forced_tag = detect_supported_intent( 
-        corrected_message, 
-        comparison_titles, 
-    ) 
+    ml_predictions = predict_class(
+        corrected_message,
+        algorithm=algorithm,
+        error_threshold=0.10,
+    )
+    # Deterministic routing recognises comparison wording that the intent
+    # model may not have seen during training, such as
+    # "compare budget of Avatar and Ant-Man".  Keep the ML prediction as a
+    # fallback after title words are removed and for the debug confidence
+    # display.
+    forced_tag = detect_supported_intent(
+        corrected_message,
+        comparison_titles,
+    )
  
     # -------------------------------------------------------- 
     # STEP 4: Ranking 
@@ -641,16 +647,10 @@ def chatbot_response(user_message, algorithm="hybrid"):
             forced_tag, 
             corrected_message, 
         ) 
-        ranking_predictions = predict_class( 
-            corrected_message, 
-            algorithm=algorithm, 
-            error_threshold=0.10, 
-        ) 
- 
         return { 
             "response": ranking_response, 
             "intent": forced_tag, 
-            "scores": dict(ranking_predictions), 
+            "scores": dict(ml_predictions),
         } 
  
     # -------------------------------------------------------- 

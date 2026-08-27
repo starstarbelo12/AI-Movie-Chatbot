@@ -420,6 +420,18 @@ requirement_words = {
     "profit", "profits", "profitable", "exceed", "exceeds", "exceeded"
 }
 
+# Keep metadata terms out of title candidates.  Without these words, a query
+# such as "production company and country of Spider-Man" is compared against
+# titles like "A Company Man" instead of matching the explicit Spider-Man
+# title in the sentence.
+requirement_words.update({
+    "production", "company", "companies", "country", "countries",
+    "studio", "studios", "produced", "producer", "producers",
+    "made", "filmed", "filming", "location", "origin", "national",
+    "nation", "nations", "distributed", "distributor", "financed",
+    "backed", "behind", "involved", "credits", "created", "owns",
+})
+
 title_vectorizer = TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 4))
 title_vectors = title_vectorizer.fit_transform(all_titles_lower)
 
@@ -606,6 +618,12 @@ def find_best_fuzzy_title(candidate_words, fuzzy_cutoff=70, min_title_len=4):
     if not result:
         return None
     matched_title = _content_to_title.get(result[0])
+    matched_words = result[0].split()
+    if any(
+        max(fuzz.ratio(word, matched_word) for matched_word in matched_words) < 65
+        for word in candidate_words
+    ):
+        return None
     if matched_title and len(matched_title) >= min_title_len:
         return matched_title
     return None
