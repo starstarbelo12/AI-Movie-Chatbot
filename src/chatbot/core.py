@@ -231,7 +231,7 @@ ASK_TAG_KEYWORDS = [
  
     ( 
         "ask_collection", 
-        {"collection", "franchise"}, 
+        {"collection", "franchise", "series"}, 
         [ 
             "part of a series", 
             "belongs to a collection", 
