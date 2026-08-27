@@ -9,12 +9,17 @@ import wordninja
 from rapidfuzz import fuzz, process
 from spellchecker import SpellChecker
 from nltk.stem import PorterStemmer
+from pathlib import Path
 
 from .models import df_cleaned
 
 # ============================================================
 # NLTK & STEMMER
 # ============================================================
+
+_NLTK_DATA_DIR = Path(__file__).resolve().parent.parent.parent / "nltk_data"
+_NLTK_DATA_DIR.mkdir(exist_ok=True)
+nltk.data.path.append(str(_NLTK_DATA_DIR))
 
 nltk.download("punkt", quiet=True)
 nltk.download("punkt_tab", quiet=True)
