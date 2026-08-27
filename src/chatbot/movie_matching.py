@@ -705,7 +705,7 @@ def find_movies_in_message(user_message, max_movies=15, fuzzy_cutoff=70, min_tit
     remaining_text = cleaned
     for title in comparison_title_candidates:
         if all(word in requirement_words for word in title.split()):
-+            continue
+             continue
         match = re.search(rf"(?<!\w){re.escape(title)}(?!\w)", remaining_text)
         if match and title not in matches:
             matches.append(title)
