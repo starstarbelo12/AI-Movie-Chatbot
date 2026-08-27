@@ -414,7 +414,10 @@ requirement_words = {
     "biggest", "smallest", "longest", "shortest", "cheapest", "expensive",
     "popular", "popularity", "votes", "vote", "count", "list", "display",
     "and", "or","compare", "compared", "comparing", "comparison", 
-    "difference", "differences", "versus", "vs", "part", "series"   
+    "difference", "differences", "versus", "vs", "part", "series",
+    "enough", "cover", "covers", "covered", "back", "make", "made",
+    "cost", "costs", "earn", "earns", "earning", "earned",
+    "profit", "profits", "profitable", "exceed", "exceeds", "exceeded"
 }
 
 title_vectorizer = TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 4))
@@ -567,7 +570,10 @@ comparison_fillers = _stopwords_en | requirement_words | {
     "differentiate", "differentiating",
     "contrast", "contrasting", "contrasted",
     "distinguish", "distinguishing", "distinction", "distinctions",
-    "disparity", "dissimilarity"
+    "disparity", "dissimilarity","make", "back", "cost", "costs", "earn", "earns", "earning",
+    "exceed", "exceeds", "exceeded", "cover", "covers", "covered",
+    "enough", "profit", "profits", "profitable", "revenues", "money",
+    "grossed"
 }
 
 def strip_articles(words):
@@ -698,6 +704,8 @@ def find_movies_in_message(user_message, max_movies=15, fuzzy_cutoff=70, min_tit
 
     remaining_text = cleaned
     for title in comparison_title_candidates:
+        if all(word in requirement_words for word in title.split()):
++            continue
         match = re.search(rf"(?<!\w){re.escape(title)}(?!\w)", remaining_text)
         if match and title not in matches:
             matches.append(title)
