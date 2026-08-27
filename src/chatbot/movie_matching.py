@@ -119,7 +119,7 @@ def token_overlap_score(candidate, norm_title):
 
 def find_token_overlap_movie(cleaned_input):
     words_list = cleaned_input.split()
-    candidate_words = [w for w in words_list if w not in intent_only_keywords]
+    candidate_words = [w for w in words_list if w not in requirement_words]
 
     if not candidate_words:
         return None
