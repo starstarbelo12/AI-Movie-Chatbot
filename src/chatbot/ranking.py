@@ -169,6 +169,15 @@ def rank_movies(tag, user_message):
     config = RANKING_CONFIG[tag]
     column = config["column"]
 
+    # A ranking must contain at least two results. Reject explicit requests
+    # such as "top 1" or "bottom 1" instead of presenting a one-item list.
+    requested_count = requested_rank_count(user_message)
+    if requested_count is not None and requested_count < 2:
+        return (
+            "❌ Ranking requires at least two movies. "
+            "Please request top 2 or more results."
+        )
+
     # ========================================================
     # 1. Filter by genre if present
     # ========================================================
@@ -241,6 +250,13 @@ def rank_movies(tag, user_message):
             ranked[column] > 0.1
         ]
 
+    # A genre or reliability filter may leave fewer than two usable records.
+    if len(ranked) < 2:
+        return (
+            "❌ Ranking requires at least two movies with reliable data. "
+            "Please try another category or request a broader ranking."
+        )
+
     # ========================================================
     # 5. Sort and limit
     # ========================================================
@@ -286,7 +302,6 @@ def rank_movies(tag, user_message):
         else ""
     )
 
-    requested_count = requested_rank_count(user_message)
     limit_notice = (
         f"\n\n_Note: showing {MAX_RANK_RESULTS} results maximum; "
         "this chatbot does not support more than 10 ranking results._"

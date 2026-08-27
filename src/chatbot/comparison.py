@@ -115,21 +115,11 @@ def compare_budget_and_revenue(movie_titles, user_message):
 
     rows = get_movie_rows(movie_titles)
 
-    if not rows:
-        return "❌ I couldn't find the movie record. Please include a movie title."
-
-    if len(rows) == 1:
-        row = rows[0]
-        if not has_reliable_budget(row["budget"]):
-            return (f"⚠️ **{row['title']}** has no reported budget in this dataset, so profitability can't be determined.\n"
-                    f"• Revenue: ${row['revenue']:,.0f}")
-        difference = row["revenue"] - row["budget"]
-        result = "✅ Revenue is greater than budget." if difference > 0 else "❌ Revenue is not greater than budget."
-        return (f"💰 **{row['title']}**\n\n"
-                f"• Budget: ${row['budget']:,.0f}\n\n"
-                f"• Revenue: ${row['revenue']:,.0f}\n\n"
-                f"• Revenue − Budget: ${difference:,.0f}\n\n"
-                f"• {result}")
+    if len(rows) < 2:
+        return (
+            "❌ Comparison requires at least two valid movie records. "
+            "Please include two movie titles."
+        )
 
     titles_header = " vs ".join([r['title'] for r in rows])
     lines = [f"💰 **Budget and Revenue Comparison:** {titles_header}", "", "### Budget", ""]
