@@ -706,23 +706,17 @@ def chatbot_response(user_message, algorithm="hybrid"):
     # STEP 8: Determine final intent 
     # -------------------------------------------------------- 
  
-    if forced_tag is not None: 
-        tag = forced_tag 
- 
-    elif matched_title is not None and (
-        not predictions
-        or predictions[0][0] in {"greeting", "goodbye"}
-    ):
-        tag = "search_movie"
+    if forced_tag is not None:
+       tag = forced_tag
 
-    elif predictions: 
-        tag = predictions[0][0] 
- 
-    elif matched_title is not None: 
-        tag = "search_movie" 
- 
-    else: 
-        tag = None 
+    elif predictions:
+       tag = predictions[0][0]
+
+    elif matched_title is not None:
+       tag = "search_movie"
+
+    else:
+       tag = None
  
     # -------------------------------------------------------- 
     # STEP 9: No recognized intent 
